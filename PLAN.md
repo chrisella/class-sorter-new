@@ -26,3 +26,18 @@ Each child has the following properties:
 - Blacklisted children they should not be placed with under any circumstances
 - Gender (Male or Female)
 - EAL (English as an additional Language) - *A boolean*
+
+## Implemented Features
+
+### Students Tab
+
+- **CSV Import**: Import students from CSV files with automatic column detection for name, gender, EAL, preferred friends, and blacklisted students
+- **Add/Edit Students**: Modal forms for adding new students and editing existing ones with full property support
+- **Inline Editing**: Gender and EAL properties can be quickly toggled by clicking directly on the badges in the student table
+  - Click the M/F badge to toggle between Male and Female
+  - Click the Yes/No badge to toggle EAL status
+
+### Results Tab
+
+- **Drag and Drop**: Move students between classes by dragging, with automatic blacklist violation detection
+- **Friends Tooltip**: Hover over any student to see their preferred friends, with visual indicators showing which friends are in the same class (green) vs different classes (gray)
