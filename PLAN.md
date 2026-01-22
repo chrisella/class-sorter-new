@@ -32,6 +32,7 @@ Each child has the following properties:
 ### Students Tab
 
 - **CSV Import**: Import students from CSV files with automatic column detection for name, gender, EAL, preferred friends, and blacklisted students
+- **CSV Export**: Export the raw student list to CSV for backup or transferring between machines (compatible with the import format)
 - **Add/Edit Students**: Modal forms for adding new students and editing existing ones with full property support
 - **Inline Editing**: Gender and EAL properties can be quickly toggled by clicking directly on the badges in the student table
   - Click the M/F badge to toggle between Male and Female

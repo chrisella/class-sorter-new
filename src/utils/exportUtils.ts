@@ -1,5 +1,52 @@
 import type { Student, Class, ClassStatistics } from '../types';
 
+export function exportStudentsCSV(
+  students: Student[],
+  getStudentById: (id: string) => Student | undefined
+): void {
+  const headers = [
+    'Name',
+    'Gender',
+    'EAL',
+    'Preferred Friends',
+    'Blacklisted Students',
+  ];
+
+  const rows = students.map((student) => {
+    const preferredFriendNames = student.preferredFriends
+      .map((id) => getStudentById(id)?.name)
+      .filter(Boolean)
+      .join('; ');
+    const blacklistedNames = student.blacklistedStudents
+      .map((id) => getStudentById(id)?.name)
+      .filter(Boolean)
+      .join('; ');
+
+    return [
+      student.name,
+      student.gender === 'male' ? 'M' : 'F',
+      student.isEAL ? 'Yes' : 'No',
+      preferredFriendNames || '',
+      blacklistedNames || '',
+    ];
+  });
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map((row) =>
+      row.map((cell) => {
+        // Escape cells containing commas or quotes
+        if (cell.includes(',') || cell.includes('"') || cell.includes('\n') || cell.includes(';')) {
+          return `"${cell.replace(/"/g, '""')}"`;
+        }
+        return cell;
+      }).join(',')
+    ),
+  ].join('\n');
+
+  downloadFile(csvContent, 'students.csv', 'text/csv');
+}
+
 export function exportToCSV(
   students: Student[],
   classes: Class[],

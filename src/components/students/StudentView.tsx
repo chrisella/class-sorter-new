@@ -3,11 +3,12 @@ import { StudentTable } from './StudentTable';
 import { AddStudentForm } from './AddStudentForm';
 import { ImportDialog } from './ImportDialog';
 import { useStudentStore } from '../../stores';
+import { exportStudentsCSV } from '../../utils/exportUtils';
 
 export function StudentView() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const { students, deleteAllStudents } = useStudentStore();
+  const { students, deleteAllStudents, getStudentById } = useStudentStore();
 
   const handleClearAll = () => {
     if (window.confirm('Are you sure you want to delete all students? This cannot be undone.')) {
@@ -24,6 +25,14 @@ export function StudentView() {
           <p className="text-sm text-gray-500">{students.length} students total</p>
         </div>
         <div className="flex items-center gap-2">
+          {students.length > 0 && (
+            <button
+              onClick={() => exportStudentsCSV(students, getStudentById)}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Export CSV
+            </button>
+          )}
           <button
             onClick={() => setShowImport(true)}
             className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
