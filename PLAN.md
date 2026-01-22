@@ -41,3 +41,4 @@ Each child has the following properties:
 
 - **Drag and Drop**: Move students between classes by dragging, with automatic blacklist violation detection
 - **Friends Tooltip**: Hover over any student to see their preferred friends, with visual indicators showing which friends are in the same class (green) vs different classes (gray)
+- **PDF Export**: Export includes preferred friends list for each student, with matched friends highlighted in green
