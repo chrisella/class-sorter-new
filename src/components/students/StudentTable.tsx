@@ -12,7 +12,7 @@ import { EditStudentModal } from './EditStudentModal';
 const columnHelper = createColumnHelper<Student>();
 
 export function StudentTable() {
-  const { students, deleteStudent, getStudentById } = useStudentStore();
+  const { students, deleteStudent, getStudentById, updateStudent } = useStudentStore();
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   const columns = useMemo(
@@ -25,28 +25,43 @@ export function StudentTable() {
       }),
       columnHelper.accessor('gender', {
         header: 'Gender',
-        cell: (info) => (
-          <span
-            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-              info.getValue() === 'male'
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-pink-100 text-pink-700'
-            }`}
-          >
-            {info.getValue() === 'male' ? 'M' : 'F'}
-          </span>
-        ),
+        cell: (info) => {
+          const student = info.row.original;
+          const isMale = info.getValue() === 'male';
+          return (
+            <button
+              onClick={() => updateStudent(student.id, { gender: isMale ? 'female' : 'male' })}
+              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full cursor-pointer transition-colors ${
+                isMale
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'bg-pink-100 text-pink-700 hover:bg-pink-200'
+              }`}
+              title={`Click to change to ${isMale ? 'Female' : 'Male'}`}
+            >
+              {isMale ? 'M' : 'F'}
+            </button>
+          );
+        },
       }),
       columnHelper.accessor('isEAL', {
         header: 'EAL',
-        cell: (info) =>
-          info.getValue() ? (
-            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">
-              Yes
-            </span>
-          ) : (
-            <span className="text-gray-400">-</span>
-          ),
+        cell: (info) => {
+          const student = info.row.original;
+          const isEAL = info.getValue();
+          return (
+            <button
+              onClick={() => updateStudent(student.id, { isEAL: !isEAL })}
+              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full cursor-pointer transition-colors ${
+                isEAL
+                  ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+              title={`Click to ${isEAL ? 'remove' : 'mark as'} EAL`}
+            >
+              {isEAL ? 'Yes' : 'No'}
+            </button>
+          );
+        },
       }),
       columnHelper.accessor('preferredFriends', {
         header: 'Preferred Friends',
@@ -117,7 +132,7 @@ export function StudentTable() {
         ),
       }),
     ],
-    [deleteStudent, getStudentById]
+    [deleteStudent, getStudentById, updateStudent]
   );
 
   const table = useReactTable({

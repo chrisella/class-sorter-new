@@ -1,8 +1,144 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useClassStore, useStudentStore } from '../../stores';
 import { calculateStudentSatisfaction } from '../../utils/sortingAlgorithm';
 import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
 import type { Student } from '../../types';
+
+interface FriendsTooltipProps {
+  student: Student;
+  classId: string;
+  getStudentById: (id: string) => Student | undefined;
+  anchorRef: React.RefObject<HTMLDivElement | null>;
+}
+
+function FriendsTooltip({ student, classId, getStudentById, anchorRef }: FriendsTooltipProps) {
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (anchorRef.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + 8,
+        left: rect.left + rect.width / 2,
+      });
+    }
+  }, [anchorRef]);
+
+  const content = student.preferredFriends.length === 0 ? (
+    <div className="text-gray-400">No preferred friends</div>
+  ) : (
+    <>
+      <div className="font-medium mb-1.5 text-gray-300">Preferred Friends</div>
+      <div className="space-y-1">
+        {student.preferredFriends.map((friendId) => {
+          const friend = getStudentById(friendId);
+          if (!friend) return null;
+          const inSameClass = friend.assignedClassId === classId;
+          return (
+            <div key={friendId} className="flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full ${inSameClass ? 'bg-green-400' : 'bg-gray-500'}`}
+              />
+              <span className={inSameClass ? 'text-green-300' : 'text-gray-400'}>
+                {friend.name}
+              </span>
+              {inSameClass && (
+                <span className="text-green-400 text-[10px]">✓</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  return createPortal(
+    <div
+      className="fixed px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-50 min-w-40 -translate-x-1/2"
+      style={{ top: position.top, left: position.left }}
+    >
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900" />
+      {content}
+    </div>,
+    document.body
+  );
+}
+
+interface StudentCardProps {
+  student: Student;
+  classId: string;
+  students: Student[];
+  getStudentById: (id: string) => Student | undefined;
+  getSatisfactionColor: (score: number, hasViolation: boolean) => string;
+  onDragStart: (e: React.DragEvent, student: Student) => void;
+}
+
+function StudentCard({
+  student,
+  classId,
+  students,
+  getStudentById,
+  getSatisfactionColor,
+  onDragStart,
+}: StudentCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const satisfaction = calculateStudentSatisfaction(student, classId, students);
+  const colorClass = getSatisfactionColor(
+    satisfaction.score,
+    satisfaction.hasBlacklistViolation
+  );
+
+  return (
+    <div
+      ref={cardRef}
+      draggable
+      onDragStart={(e) => onDragStart(e, student)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`relative px-3 py-2 rounded border cursor-move hover:shadow-sm transition-shadow ${colorClass}`}
+    >
+      {isHovered && (
+        <FriendsTooltip
+          student={student}
+          classId={classId}
+          getStudentById={getStudentById}
+          anchorRef={cardRef}
+        />
+      )}
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-sm">{student.name}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs">
+            {student.gender === 'male' ? 'M' : 'F'}
+          </span>
+          {student.isEAL && (
+            <span className="text-xs px-1 bg-white/50 rounded">
+              EAL
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="mt-1 text-xs opacity-75">
+        {satisfaction.hasBlacklistViolation ? (
+          <span className="text-red-700 font-medium">
+            Blacklist violation!
+          </span>
+        ) : satisfaction.maxPossibleFriends > 0 ? (
+          <span>
+            {satisfaction.preferredFriendsInClass}/
+            {satisfaction.maxPossibleFriends} friends (
+            {satisfaction.score.toFixed(0)}%)
+          </span>
+        ) : (
+          <span>No friend preferences</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function ResultsView() {
   const { classes, lastSortingResult } = useClassStore();
@@ -152,55 +288,17 @@ export function ResultsView() {
                   </p>
                 ) : (
                   <div className="space-y-1">
-                    {classStudents.map((student) => {
-                      const satisfaction = calculateStudentSatisfaction(
-                        student,
-                        cls.id,
-                        students
-                      );
-                      const colorClass = getSatisfactionColor(
-                        satisfaction.score,
-                        satisfaction.hasBlacklistViolation
-                      );
-
-                      return (
-                        <div
-                          key={student.id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, student)}
-                          className={`px-3 py-2 rounded border cursor-move hover:shadow-sm transition-shadow ${colorClass}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-sm">{student.name}</span>
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs">
-                                {student.gender === 'male' ? 'M' : 'F'}
-                              </span>
-                              {student.isEAL && (
-                                <span className="text-xs px-1 bg-white/50 rounded">
-                                  EAL
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="mt-1 text-xs opacity-75">
-                            {satisfaction.hasBlacklistViolation ? (
-                              <span className="text-red-700 font-medium">
-                                Blacklist violation!
-                              </span>
-                            ) : satisfaction.maxPossibleFriends > 0 ? (
-                              <span>
-                                {satisfaction.preferredFriendsInClass}/
-                                {satisfaction.maxPossibleFriends} friends (
-                                {satisfaction.score.toFixed(0)}%)
-                              </span>
-                            ) : (
-                              <span>No friend preferences</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {classStudents.map((student) => (
+                      <StudentCard
+                        key={student.id}
+                        student={student}
+                        classId={cls.id}
+                        students={students}
+                        getStudentById={getStudentById}
+                        getSatisfactionColor={getSatisfactionColor}
+                        onDragStart={handleDragStart}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
