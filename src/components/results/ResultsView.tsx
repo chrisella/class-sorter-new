@@ -1,0 +1,222 @@
+import { useState } from 'react';
+import { useClassStore, useStudentStore } from '../../stores';
+import { calculateStudentSatisfaction } from '../../utils/sortingAlgorithm';
+import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
+import type { Student } from '../../types';
+
+export function ResultsView() {
+  const { classes, lastSortingResult } = useClassStore();
+  const { students, assignStudentToClass, getStudentById } = useStudentStore();
+  const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
+
+  const assignedStudents = students.filter((s) => s.assignedClassId !== null);
+
+  if (assignedStudents.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <svg
+          className="mx-auto h-12 w-12 text-gray-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+          />
+        </svg>
+        <h3 className="mt-2 text-sm font-medium text-gray-900">No results yet</h3>
+        <p className="mt-1 text-sm text-gray-500">
+          Run the sorting algorithm first to see results here.
+        </p>
+      </div>
+    );
+  }
+
+  const handleDragStart = (e: React.DragEvent, student: Student) => {
+    setDraggedStudent(student);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetClassId: string) => {
+    e.preventDefault();
+    if (draggedStudent && draggedStudent.assignedClassId !== targetClassId) {
+      // Check for blacklist violations
+      const targetClassStudents = students.filter((s) => s.assignedClassId === targetClassId);
+      const hasViolation =
+        draggedStudent.blacklistedStudents.some((bId) =>
+          targetClassStudents.some((s) => s.id === bId)
+        ) ||
+        targetClassStudents.some((s) => s.blacklistedStudents.includes(draggedStudent.id));
+
+      if (hasViolation) {
+        alert('Cannot move student: blacklist violation detected.');
+      } else {
+        assignStudentToClass(draggedStudent.id, targetClassId);
+      }
+    }
+    setDraggedStudent(null);
+  };
+
+  const getSatisfactionColor = (score: number, hasViolation: boolean) => {
+    if (hasViolation) return 'bg-red-100 border-red-300 text-red-800';
+    if (score >= 80) return 'bg-green-100 border-green-300 text-green-800';
+    if (score >= 40) return 'bg-yellow-100 border-yellow-300 text-yellow-800';
+    return 'bg-orange-100 border-orange-300 text-orange-800';
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-medium text-gray-900">Class Assignments</h2>
+          <p className="text-sm text-gray-500">
+            Drag and drop students between classes to make adjustments.
+            {lastSortingResult && (
+              <span className="ml-2">
+                Overall satisfaction: {lastSortingResult.overallSatisfaction.toFixed(1)}%
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportToCSV(students, classes, getStudentById)}
+            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => exportToPDF(students, classes, lastSortingResult?.classStatistics, getStudentById)}
+            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Export PDF
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {classes.map((cls) => {
+          const classStudents = students.filter((s) => s.assignedClassId === cls.id);
+          const stats = lastSortingResult?.classStatistics.find((cs) => cs.classId === cls.id);
+
+          return (
+            <div
+              key={cls.id}
+              className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, cls.id)}
+            >
+              {/* Class Header */}
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900">{cls.name}</h3>
+                    {cls.teacherName && (
+                      <p className="text-xs text-gray-500">{cls.teacherName}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">
+                      {classStudents.length} students
+                    </p>
+                    {stats && (
+                      <p className="text-xs text-gray-500">
+                        {stats.averageSatisfaction.toFixed(0)}% satisfied
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {/* Quick stats */}
+                <div className="mt-2 flex gap-3 text-xs text-gray-500">
+                  <span>
+                    {classStudents.filter((s) => s.gender === 'male').length}M /{' '}
+                    {classStudents.filter((s) => s.gender === 'female').length}F
+                  </span>
+                  <span>{classStudents.filter((s) => s.isEAL).length} EAL</span>
+                </div>
+              </div>
+
+              {/* Student List */}
+              <div className="p-2 min-h-[200px] max-h-[400px] overflow-y-auto">
+                {classStudents.length === 0 ? (
+                  <p className="text-center text-sm text-gray-400 py-4">
+                    Drop students here
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {classStudents.map((student) => {
+                      const satisfaction = calculateStudentSatisfaction(
+                        student,
+                        cls.id,
+                        students
+                      );
+                      const colorClass = getSatisfactionColor(
+                        satisfaction.score,
+                        satisfaction.hasBlacklistViolation
+                      );
+
+                      return (
+                        <div
+                          key={student.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, student)}
+                          className={`px-3 py-2 rounded border cursor-move hover:shadow-sm transition-shadow ${colorClass}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm">{student.name}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs">
+                                {student.gender === 'male' ? 'M' : 'F'}
+                              </span>
+                              {student.isEAL && (
+                                <span className="text-xs px-1 bg-white/50 rounded">
+                                  EAL
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-1 text-xs opacity-75">
+                            {satisfaction.hasBlacklistViolation ? (
+                              <span className="text-red-700 font-medium">
+                                Blacklist violation!
+                              </span>
+                            ) : satisfaction.maxPossibleFriends > 0 ? (
+                              <span>
+                                {satisfaction.preferredFriendsInClass}/
+                                {satisfaction.maxPossibleFriends} friends (
+                                {satisfaction.score.toFixed(0)}%)
+                              </span>
+                            ) : (
+                              <span>No friend preferences</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-sm">
+        <span className="text-gray-500">Satisfaction:</span>
+        <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">80-100%</span>
+        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">40-79%</span>
+        <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">0-39%</span>
+        <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Violation</span>
+      </div>
+    </div>
+  );
+}
