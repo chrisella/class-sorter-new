@@ -145,12 +145,19 @@ function generatePDFHTML(
               <th>Name</th>
               <th>Gender</th>
               <th>EAL</th>
-              <th>Friends in Class</th>
+              <th>Preferred Friends</th>
+              <th>Matched</th>
             </tr>
           </thead>
           <tbody>
             ${classStudents
               .map((student) => {
+                const friendsList = student.preferredFriends.map((fId) => {
+                  const friend = getStudentById(fId);
+                  if (!friend) return null;
+                  const inSameClass = friend.assignedClassId === cls.id;
+                  return `<span class="${inSameClass ? 'friend-matched' : 'friend-unmatched'}">${friend.name}</span>`;
+                }).filter(Boolean).join(', ') || '-';
                 const friendsInClass = student.preferredFriends.filter((fId) => {
                   const friend = getStudentById(fId);
                   return friend && friend.assignedClassId === cls.id;
@@ -160,6 +167,7 @@ function generatePDFHTML(
                     <td>${student.name}</td>
                     <td>${student.gender === 'male' ? 'M' : 'F'}</td>
                     <td>${student.isEAL ? 'Yes' : '-'}</td>
+                    <td>${friendsList}</td>
                     <td>${friendsInClass}/${student.preferredFriends.length}</td>
                   </tr>
                 `;
@@ -226,6 +234,13 @@ function generatePDFHTML(
         }
         tr:nth-child(even) {
           background: #fafafa;
+        }
+        .friend-matched {
+          color: #15803d;
+          font-weight: 500;
+        }
+        .friend-unmatched {
+          color: #6b7280;
         }
         @media print {
           body {
