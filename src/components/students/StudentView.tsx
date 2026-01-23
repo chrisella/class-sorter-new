@@ -2,19 +2,15 @@ import { useState } from 'react';
 import { StudentTable } from './StudentTable';
 import { AddStudentForm } from './AddStudentForm';
 import { ImportDialog } from './ImportDialog';
+import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { useStudentStore } from '../../stores';
 import { exportStudentsCSV } from '../../utils/exportUtils';
 
 export function StudentView() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const { students, deleteAllStudents, getStudentById } = useStudentStore();
-
-  const handleClearAll = () => {
-    if (window.confirm('Are you sure you want to delete all students? This cannot be undone.')) {
-      deleteAllStudents();
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -47,7 +43,7 @@ export function StudentView() {
           </button>
           {students.length > 0 && (
             <button
-              onClick={handleClearAll}
+              onClick={() => setShowClearConfirm(true)}
               className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50"
             >
               Clear All
@@ -96,6 +92,18 @@ export function StudentView() {
       {/* Modals */}
       {showAddForm && <AddStudentForm onClose={() => setShowAddForm(false)} />}
       {showImport && <ImportDialog onClose={() => setShowImport(false)} />}
+      {showClearConfirm && (
+        <ConfirmDialog
+          title="Clear All Students"
+          message="Are you sure you want to delete all students? This cannot be undone."
+          confirmLabel="Delete All"
+          onConfirm={() => {
+            deleteAllStudents();
+            setShowClearConfirm(false);
+          }}
+          onCancel={() => setShowClearConfirm(false)}
+        />
+      )}
     </div>
   );
 }

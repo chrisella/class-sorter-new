@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useClassStore, useStudentStore } from '../../stores';
+import { ConfirmDialog } from '../shared/ConfirmDialog';
+import type { Class } from '../../types';
 
 export function ClassesView() {
   const { classes, addClass, updateClass, deleteClass, deleteAllClasses, generateDefaultClasses } =
@@ -9,6 +11,10 @@ export function ClassesView() {
   const [newClassName, setNewClassName] = useState('');
   const [newTeacherName, setNewTeacherName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [deletingClass, setDeletingClass] = useState<Class | null>(null);
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [generateCount, setGenerateCount] = useState('3');
 
   const handleAddClass = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,16 +27,13 @@ export function ClassesView() {
     setShowAddForm(false);
   };
 
-  const handleGenerateClasses = () => {
-    const count = parseInt(prompt('How many classes?', '3') || '0', 10);
+  const handleGenerateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const count = parseInt(generateCount, 10);
     if (count > 0 && count <= 10) {
       generateDefaultClasses(count, students.length);
-    }
-  };
-
-  const handleClearAll = () => {
-    if (window.confirm('Are you sure you want to delete all classes?')) {
-      deleteAllClasses();
+      setShowGenerateDialog(false);
+      setGenerateCount('3');
     }
   };
 
@@ -46,7 +49,7 @@ export function ClassesView() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleGenerateClasses}
+            onClick={() => setShowGenerateDialog(true)}
             className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
           >
             Auto Generate
@@ -59,7 +62,7 @@ export function ClassesView() {
           </button>
           {classes.length > 0 && (
             <button
-              onClick={handleClearAll}
+              onClick={() => setShowClearConfirm(true)}
               className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50"
             >
               Clear All
@@ -183,11 +186,7 @@ export function ClassesView() {
                         Edit
                       </button>
                       <button
-                        onClick={() => {
-                          if (window.confirm(`Delete ${cls.name}?`)) {
-                            deleteClass(cls.id);
-                          }
-                        }}
+                        onClick={() => setDeletingClass(cls)}
                         className="text-sm text-red-600 hover:text-red-800"
                       >
                         Delete
@@ -225,7 +224,7 @@ export function ClassesView() {
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <button
-              onClick={handleGenerateClasses}
+              onClick={() => setShowGenerateDialog(true)}
               className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               Auto Generate
@@ -236,6 +235,71 @@ export function ClassesView() {
             >
               Add Class
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Dialogs */}
+      {showClearConfirm && (
+        <ConfirmDialog
+          title="Clear All Classes"
+          message="Are you sure you want to delete all classes?"
+          confirmLabel="Delete All"
+          onConfirm={() => {
+            deleteAllClasses();
+            setShowClearConfirm(false);
+          }}
+          onCancel={() => setShowClearConfirm(false)}
+        />
+      )}
+
+      {deletingClass && (
+        <ConfirmDialog
+          title="Delete Class"
+          message={`Are you sure you want to delete ${deletingClass.name}?`}
+          confirmLabel="Delete"
+          onConfirm={() => {
+            deleteClass(deletingClass.id);
+            setDeletingClass(null);
+          }}
+          onCancel={() => setDeletingClass(null)}
+        />
+      )}
+
+      {showGenerateDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowGenerateDialog(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Auto Generate Classes</h3>
+            <form onSubmit={handleGenerateSubmit}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Number of classes (1-10)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={generateCount}
+                onChange={(e) => setGenerateCount(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+              />
+              <div className="mt-4 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowGenerateDialog(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                >
+                  Generate
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
