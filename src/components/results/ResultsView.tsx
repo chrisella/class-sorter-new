@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useClassStore, useStudentStore } from '../../stores';
 import { calculateStudentSatisfaction } from '../../utils/sortingAlgorithm';
 import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
+import { AlertDialog } from '../shared/ConfirmDialog';
 import type { Student } from '../../types';
 
 interface FriendsTooltipProps {
@@ -144,6 +145,7 @@ export function ResultsView() {
   const { classes, lastSortingResult } = useClassStore();
   const { students, assignStudentToClass, getStudentById } = useStudentStore();
   const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
+  const [showViolationAlert, setShowViolationAlert] = useState(false);
 
   const assignedStudents = students.filter((s) => s.assignedClassId !== null);
 
@@ -193,7 +195,7 @@ export function ResultsView() {
         targetClassStudents.some((s) => s.blacklistedStudents.includes(draggedStudent.id));
 
       if (hasViolation) {
-        alert('Cannot move student: blacklist violation detected.');
+        setShowViolationAlert(true);
       } else {
         assignStudentToClass(draggedStudent.id, targetClassId);
       }
@@ -315,6 +317,14 @@ export function ResultsView() {
         <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">0-39%</span>
         <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Violation</span>
       </div>
+
+      {showViolationAlert && (
+        <AlertDialog
+          title="Cannot Move Student"
+          message="This move would create a blacklist violation. Students who are blacklisted from each other cannot be placed in the same class."
+          onClose={() => setShowViolationAlert(false)}
+        />
+      )}
     </div>
   );
 }

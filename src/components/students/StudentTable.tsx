@@ -8,12 +8,14 @@ import {
 import { useStudentStore } from '../../stores';
 import type { Student } from '../../types';
 import { EditStudentModal } from './EditStudentModal';
+import { ConfirmDialog } from '../shared/ConfirmDialog';
 
 const columnHelper = createColumnHelper<Student>();
 
 export function StudentTable() {
   const { students, deleteStudent, getStudentById, updateStudent } = useStudentStore();
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
 
   const columns = useMemo(
     () => [
@@ -119,11 +121,7 @@ export function StudentTable() {
               Edit
             </button>
             <button
-              onClick={() => {
-                if (window.confirm(`Delete ${info.row.original.name}?`)) {
-                  deleteStudent(info.row.original.id);
-                }
-              }}
+              onClick={() => setDeletingStudent(info.row.original)}
               className="text-sm text-red-600 hover:text-red-800"
             >
               Delete
@@ -132,7 +130,7 @@ export function StudentTable() {
         ),
       }),
     ],
-    [deleteStudent, getStudentById, updateStudent]
+    [getStudentById, updateStudent]
   );
 
   const table = useReactTable({
@@ -181,6 +179,19 @@ export function StudentTable() {
         <EditStudentModal
           student={editingStudent}
           onClose={() => setEditingStudent(null)}
+        />
+      )}
+
+      {deletingStudent && (
+        <ConfirmDialog
+          title="Delete Student"
+          message={`Are you sure you want to delete ${deletingStudent.name}?`}
+          confirmLabel="Delete"
+          onConfirm={() => {
+            deleteStudent(deletingStudent.id);
+            setDeletingStudent(null);
+          }}
+          onCancel={() => setDeletingStudent(null)}
         />
       )}
     </>
