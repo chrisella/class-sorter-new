@@ -5,24 +5,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ```bash
-# Run the full Tauri desktop app (frontend + Rust backend)
-npm run tauri dev
-
-# Run just the web frontend in browser (faster iteration)
+# Run the Electron desktop app (launches Vite dev server + Electron)
 npm run dev
 
 # Build for production
-npm run tauri build
+npm run build
 
 # Type check
 npx tsc --noEmit
 ```
 
-**Prerequisites:** Node.js and Rust (install from rustup.rs)
+**Prerequisites:** Node.js
 
 ## Architecture
 
-This is a **Tauri v2** desktop application for teachers to sort students into balanced classes. The frontend is React 19 + TypeScript + Vite, with Tailwind CSS for styling.
+This is an **Electron** desktop application for teachers to sort students into balanced classes. The frontend is React 19 + TypeScript + Vite, with Tailwind CSS for styling.
 
 ### State Management
 
