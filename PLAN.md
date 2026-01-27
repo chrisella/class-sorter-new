@@ -4,12 +4,12 @@ An application for teachers to organise their classes into new classes for the f
 
 ## Requirements
 
-- A Portable, standalone application, ideally something like Electron or similar alternatives, however if there is something better suited then that can be considered
+- A Portable, standalone desktop application built with Electron
 - Allow a user to easily input tabular data about all the children and each ones properties
 - Allow a user to easily modify already input data
 - Once valid class permutations are calculated and displayed to the user, they should be able to manually move children between classes if they see situations that can't exist
 - Should show how well placed each child is in the final class displays, based on their parameters
-- Show statistics on the classes based on the children parameters 
+- Show statistics on the classes based on the children parameters
 
 ## Data Formats
 
