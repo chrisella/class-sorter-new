@@ -15,7 +15,11 @@ export async function runSorting(
 
       // Validate hard constraints
       if (!validateHardConstraints(students, currentAssignment)) {
-        reject(new Error('Cannot satisfy all blacklist constraints. Check for conflicting requirements.'));
+        reject(
+          new Error(
+            'Cannot satisfy hard constraints (blacklist and/or must-be-with). Check for conflicting requirements.'
+          )
+        );
         return;
       }
 
@@ -88,33 +92,40 @@ function generateInitialAssignment(students: Student[], classes: Class[]): Assig
   const classSizes = new Map<string, number>();
   classes.forEach((c) => classSizes.set(c.id, 0));
 
-  // Sort students by constraint complexity (most constrained first)
-  const sortedStudents = [...students].sort(
-    (a, b) =>
-      b.blacklistedStudents.length +
-      b.preferredFriends.length -
-      (a.blacklistedStudents.length + a.preferredFriends.length)
-  );
+  // Sort units by constraint complexity (most constrained first)
+  const studentMap = new Map(students.map((s) => [s.id, s]));
+  const units = buildStudentUnits(students).sort((a, b) => {
+    const score = (unit: string[]) =>
+      unit.reduce((sum, id) => {
+        const student = studentMap.get(id);
+        if (!student) return sum;
+        return sum + student.blacklistedStudents.length + student.preferredFriends.length;
+      }, 0);
+    return score(b) - score(a);
+  });
 
-  for (const student of sortedStudents) {
+  for (const unit of units) {
+    const unitStudents = unit
+      .map((id) => studentMap.get(id))
+      .filter((s): s is Student => Boolean(s));
+
     // Find valid classes (no blacklist violations)
     const validClasses = classes.filter((c) => {
       const classStudents = Array.from(assignment.entries())
         .filter(([, cId]) => cId === c.id)
         .map(([sId]) => sId);
 
-      // Check if any blacklisted student is in this class
-      const hasBlacklistViolation = student.blacklistedStudents.some((bId) =>
-        classStudents.includes(bId)
-      );
-
-      // Check if student is blacklisted by anyone in this class
-      const isBlacklistedByOther = classStudents.some((sId) => {
-        const s = students.find((st) => st.id === sId);
-        return s?.blacklistedStudents.includes(student.id);
+      // Check if any student in unit violates blacklist with class members
+      return unitStudents.every((student) => {
+        const hasBlacklistViolation = student.blacklistedStudents.some((bId) =>
+          classStudents.includes(bId)
+        );
+        const isBlacklistedByOther = classStudents.some((sId) => {
+          const classmate = studentMap.get(sId);
+          return classmate?.blacklistedStudents.includes(student.id);
+        });
+        return !hasBlacklistViolation && !isBlacklistedByOther;
       });
-
-      return !hasBlacklistViolation && !isBlacklistedByOther;
     });
 
     if (validClasses.length === 0) {
@@ -122,15 +133,24 @@ function generateInitialAssignment(students: Student[], classes: Class[]): Assig
       const [minClass] = classes.sort(
         (a, b) => (classSizes.get(a.id) || 0) - (classSizes.get(b.id) || 0)
       );
-      assignment.set(student.id, minClass.id);
-      classSizes.set(minClass.id, (classSizes.get(minClass.id) || 0) + 1);
+      unit.forEach((studentId) => assignment.set(studentId, minClass.id));
+      classSizes.set(
+        minClass.id,
+        (classSizes.get(minClass.id) || 0) + unit.length
+      );
       continue;
     }
 
     // Choose class that maximizes friend count, then balances size
     const bestClass = validClasses.reduce((best, current) => {
-      const currentFriends = countFriendsInClass(student, current.id, assignment);
-      const bestFriends = countFriendsInClass(student, best.id, assignment);
+      const currentFriends = unitStudents.reduce(
+        (sum, student) => sum + countFriendsInClass(student, current.id, assignment),
+        0
+      );
+      const bestFriends = unitStudents.reduce(
+        (sum, student) => sum + countFriendsInClass(student, best.id, assignment),
+        0
+      );
       const currentSize = classSizes.get(current.id) || 0;
       const bestSize = classSizes.get(best.id) || 0;
 
@@ -141,8 +161,8 @@ function generateInitialAssignment(students: Student[], classes: Class[]): Assig
       return best;
     });
 
-    assignment.set(student.id, bestClass.id);
-    classSizes.set(bestClass.id, (classSizes.get(bestClass.id) || 0) + 1);
+    unit.forEach((studentId) => assignment.set(studentId, bestClass.id));
+    classSizes.set(bestClass.id, (classSizes.get(bestClass.id) || 0) + unit.length);
   }
 
   return assignment;
@@ -163,33 +183,63 @@ function validateHardConstraints(students: Student[], assignment: Assignment): b
         return false;
       }
     }
+
+    // Must-be-with is a hard constraint during sorting
+    if (student.mustBeWithStudentId && assignment.get(student.mustBeWithStudentId) !== classId) {
+      return false;
+    }
   }
   return true;
 }
 
-function generateNeighbor(assignment: Assignment, _students: Student[], classes: Class[]): Assignment {
+function generateNeighbor(assignment: Assignment, students: Student[], classes: Class[]): Assignment {
   const neighbor = new Map(assignment);
-  const studentIds = Array.from(assignment.keys());
+  const units = buildStudentUnits(students);
 
-  if (Math.random() < 0.7) {
-    // Swap two students from different classes
-    const s1 = studentIds[Math.floor(Math.random() * studentIds.length)];
-    const s2 = studentIds[Math.floor(Math.random() * studentIds.length)];
+  if (units.length === 0) return neighbor;
 
-    if (assignment.get(s1) !== assignment.get(s2)) {
-      const c1 = assignment.get(s1)!;
-      const c2 = assignment.get(s2)!;
-      neighbor.set(s1, c2);
-      neighbor.set(s2, c1);
+  if (Math.random() < 0.7 && units.length > 1) {
+    // Swap two units from different classes
+    const u1 = units[Math.floor(Math.random() * units.length)];
+    const u2 = units[Math.floor(Math.random() * units.length)];
+    const u1Class = assignment.get(u1[0]);
+    const u2Class = assignment.get(u2[0]);
+
+    if (u1Class && u2Class && u1Class !== u2Class) {
+      u1.forEach((studentId) => neighbor.set(studentId, u2Class));
+      u2.forEach((studentId) => neighbor.set(studentId, u1Class));
     }
   } else {
-    // Move single student to different class
-    const student = studentIds[Math.floor(Math.random() * studentIds.length)];
+    // Move single unit to different class
+    const unit = units[Math.floor(Math.random() * units.length)];
     const newClass = classes[Math.floor(Math.random() * classes.length)];
-    neighbor.set(student, newClass.id);
+    unit.forEach((studentId) => neighbor.set(studentId, newClass.id));
   }
 
   return neighbor;
+}
+
+function buildStudentUnits(students: Student[]): string[][] {
+  const visited = new Set<string>();
+  const units: string[][] = [];
+
+  for (const student of students) {
+    if (visited.has(student.id)) continue;
+    const partnerId = student.mustBeWithStudentId;
+    if (partnerId) {
+      const partner = students.find((s) => s.id === partnerId);
+      if (partner?.mustBeWithStudentId === student.id) {
+        visited.add(student.id);
+        visited.add(partner.id);
+        units.push([student.id, partner.id]);
+        continue;
+      }
+    }
+    visited.add(student.id);
+    units.push([student.id]);
+  }
+
+  return units;
 }
 
 function calculateScore(

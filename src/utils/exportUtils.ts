@@ -13,6 +13,7 @@ export function exportStudentsCSV(
     'EHCP',
     'SEND',
     'PPG',
+    'Must Be With',
     'Preferred Friends',
     'Blacklisted Students',
   ];
@@ -26,6 +27,9 @@ export function exportStudentsCSV(
       .map((id) => getStudentById(id)?.name)
       .filter(Boolean)
       .join('; ');
+    const mustBeWithName = student.mustBeWithStudentId
+      ? getStudentById(student.mustBeWithStudentId)?.name || ''
+      : '';
 
     return [
       student.name,
@@ -36,6 +40,7 @@ export function exportStudentsCSV(
       student.ehcp ? 'Yes' : 'No',
       student.send ? 'Yes' : 'No',
       student.ppg ? 'Yes' : 'No',
+      mustBeWithName,
       preferredFriendNames || '',
       blacklistedNames || '',
     ];
@@ -71,6 +76,7 @@ export function exportToCSV(
     'EHCP',
     'SEND',
     'PPG',
+    'Must Be With',
     'Assigned Class',
     'Preferred Friends',
     'Friends in Class',
@@ -87,6 +93,9 @@ export function exportToCSV(
       .map((id) => getStudentById(id)?.name)
       .filter(Boolean)
       .join('; ');
+    const mustBeWithName = student.mustBeWithStudentId
+      ? getStudentById(student.mustBeWithStudentId)?.name || '-'
+      : '-';
 
     // Count friends in same class
     const friendsInClass = student.preferredFriends.filter((fId) => {
@@ -103,6 +112,7 @@ export function exportToCSV(
       student.ehcp ? 'Yes' : 'No',
       student.send ? 'Yes' : 'No',
       student.ppg ? 'Yes' : 'No',
+      mustBeWithName,
       assignedClass?.name || 'Unassigned',
       preferredFriendNames || '-',
       `${friendsInClass}/${student.preferredFriends.length}`,
@@ -217,6 +227,7 @@ function generatePDFHTML(
               <th>EHCP</th>
               <th>SEND</th>
               <th>PPG</th>
+              <th>Must Be With</th>
               <th>Preferred Friends</th>
               <th>Matched</th>
             </tr>
@@ -234,6 +245,9 @@ function generatePDFHTML(
                   const friend = getStudentById(fId);
                   return friend && friend.assignedClassId === cls.id;
                 }).length;
+                const mustBeWithName = student.mustBeWithStudentId
+                  ? getStudentById(student.mustBeWithStudentId)?.name || '-'
+                  : '-';
                 return `
                   <tr>
                     <td>${student.name}</td>
@@ -244,6 +258,7 @@ function generatePDFHTML(
                     <td>${student.ehcp ? 'Yes' : '-'}</td>
                     <td>${student.send ? 'Yes' : '-'}</td>
                     <td>${student.ppg ? 'Yes' : '-'}</td>
+                    <td>${mustBeWithName}</td>
                     <td>${friendsList}</td>
                     <td>${friendsInClass}/${student.preferredFriends.length}</td>
                   </tr>

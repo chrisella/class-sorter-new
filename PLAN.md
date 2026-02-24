@@ -24,6 +24,7 @@ Each child has the following properties:
 - Name
 - 3 preferred friends to be placed with
 - Blacklisted children they should not be placed with under any circumstances
+- Optional "must be with" child (strict pair, hard sort constraint)
 - Gender (Male or Female)
 - EAL (English as an additional Language) - *A boolean*
 - Behavior rank (1-3)
@@ -39,6 +40,7 @@ Each child has the following properties:
 - **CSV Import**: Import students from CSV files with automatic column detection for name, gender, EAL, behavior, ability, EHCP/SEND/PPG, preferred friends, and blacklisted students
 - **CSV Export**: Export the raw student list to CSV for backup or transferring between machines (compatible with the import format)
 - **Add/Edit Students**: Modal forms for adding new students and editing existing ones with full property support
+- **Must-Be-With Pairing**: Optional strict 1:1 student pairing that sorting treats as a hard constraint
 - **Inline Editing**: Gender and EAL properties can be quickly toggled by clicking directly on the badges in the student table
   - Click the M/F badge to toggle between Male and Female
   - Click the Yes/No badge to toggle EAL status
