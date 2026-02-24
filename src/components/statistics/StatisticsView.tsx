@@ -60,6 +60,28 @@ export function StatisticsView() {
       };
     });
 
+    const pairMap = new Set<string>();
+    let totalMustWithPairs = 0;
+    let satisfiedMustWithPairs = 0;
+    for (const student of students) {
+      const partnerId = student.mustBeWithStudentId;
+      if (!partnerId) continue;
+      const key = [student.id, partnerId].sort().join(':');
+      if (pairMap.has(key)) continue;
+      pairMap.add(key);
+      totalMustWithPairs++;
+
+      const partner = students.find((s) => s.id === partnerId);
+      if (
+        partner &&
+        student.assignedClassId &&
+        partner.assignedClassId &&
+        student.assignedClassId === partner.assignedClassId
+      ) {
+        satisfiedMustWithPairs++;
+      }
+    }
+
     return {
       avgSatisfaction,
       satisfactionDistribution,
@@ -79,6 +101,9 @@ export function StatisticsView() {
         assignedStudents.length > 0
           ? assignedStudents.reduce((sum, s) => sum + s.ability, 0) / assignedStudents.length
           : 0,
+      totalMustWithPairs,
+      satisfiedMustWithPairs,
+      brokenMustWithPairs: totalMustWithPairs - satisfiedMustWithPairs,
     };
   }, [assignedStudents, classes, students]);
 
@@ -119,6 +144,9 @@ export function StatisticsView() {
     totalPPG,
     overallBehavior,
     overallAbility,
+    totalMustWithPairs,
+    satisfiedMustWithPairs,
+    brokenMustWithPairs,
   } = statistics;
 
   return (
@@ -173,6 +201,21 @@ export function StatisticsView() {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-sm text-gray-500">PPG</p>
           <p className="text-2xl font-bold text-gray-900">{totalPPG}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Must-With Pairs</p>
+          <p className="text-2xl font-bold text-gray-900">{totalMustWithPairs}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Must-With Satisfied</p>
+          <p className="text-2xl font-bold text-green-700">{satisfiedMustWithPairs}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Must-With Broken</p>
+          <p className="text-2xl font-bold text-red-700">{brokenMustWithPairs}</p>
         </div>
       </div>
 

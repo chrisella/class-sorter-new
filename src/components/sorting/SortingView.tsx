@@ -49,6 +49,20 @@ export function SortingView() {
   const totalEHCP = students.filter((s) => s.ehcp).length;
   const totalSEND = students.filter((s) => s.send).length;
   const totalPPG = students.filter((s) => s.ppg).length;
+  const totalMustBeWithPairs = (() => {
+    const seen = new Set<string>();
+    let count = 0;
+    for (const student of students) {
+      const partnerId = student.mustBeWithStudentId;
+      if (!partnerId) continue;
+      const key = [student.id, partnerId].sort().join(':');
+      if (!seen.has(key)) {
+        seen.add(key);
+        count++;
+      }
+    }
+    return count;
+  })();
   const safeWeight = (value: number | undefined, fallback: number) =>
     typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   const priorityWeights = {
@@ -133,6 +147,10 @@ export function SortingView() {
           <div>
             <p className="text-gray-500">PPG students</p>
             <p className="text-lg font-medium">{totalPPG}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Must-with pairs</p>
+            <p className="text-lg font-medium">{totalMustBeWithPairs}</p>
           </div>
           <div>
             <p className="text-gray-500">Students per class (avg)</p>

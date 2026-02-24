@@ -137,6 +137,11 @@ function StudentCard({
           <span>No friend preferences</span>
         )}
       </div>
+      {student.mustBeWithStudentId && (
+        <div className="mt-1 text-[11px] opacity-80">
+          Must with: {getStudentById(student.mustBeWithStudentId)?.name || 'Unknown'}
+        </div>
+      )}
     </div>
   );
 }
@@ -146,6 +151,7 @@ export function ResultsView() {
   const { students, assignStudentToClass, getStudentById } = useStudentStore();
   const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
   const [showViolationAlert, setShowViolationAlert] = useState(false);
+  const [pairWarningMessage, setPairWarningMessage] = useState<string | null>(null);
 
   const assignedStudents = students.filter((s) => s.assignedClassId !== null);
 
@@ -197,7 +203,15 @@ export function ResultsView() {
       if (hasViolation) {
         setShowViolationAlert(true);
       } else {
+        const partner = draggedStudent.mustBeWithStudentId
+          ? getStudentById(draggedStudent.mustBeWithStudentId)
+          : undefined;
         assignStudentToClass(draggedStudent.id, targetClassId);
+        if (partner && partner.assignedClassId !== targetClassId) {
+          setPairWarningMessage(
+            `This move breaks a must-be-with relationship between ${draggedStudent.name} and ${partner.name}.`
+          );
+        }
       }
     }
     setDraggedStudent(null);
@@ -326,6 +340,15 @@ export function ResultsView() {
           title="Cannot Move Student"
           message="This move would create a blacklist violation. Students who are blacklisted from each other cannot be placed in the same class."
           onClose={() => setShowViolationAlert(false)}
+        />
+      )}
+
+      {pairWarningMessage && (
+        <AlertDialog
+          title="Must-Be-With Warning"
+          message={pairWarningMessage}
+          variant="warning"
+          onClose={() => setPairWarningMessage(null)}
         />
       )}
     </div>

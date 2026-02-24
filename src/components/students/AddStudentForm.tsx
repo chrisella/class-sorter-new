@@ -19,10 +19,19 @@ export function AddStudentForm({ onClose }: Props) {
   const [ppg, setPpg] = useState(false);
   const [preferredFriends, setPreferredFriends] = useState<string[]>([]);
   const [blacklistedStudents, setBlacklistedStudents] = useState<string[]>([]);
+  const [mustBeWith, setMustBeWith] = useState<string[]>([]);
+  const [pairError, setPairError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    const selectedMustBeWithId = mustBeWith[0] || null;
+    if (selectedMustBeWithId && blacklistedStudents.includes(selectedMustBeWithId)) {
+      setPairError('Must-be-with student cannot also be blacklisted.');
+      return;
+    }
+    setPairError('');
 
     addStudent({
       name: name.trim(),
@@ -33,6 +42,7 @@ export function AddStudentForm({ onClose }: Props) {
       ehcp,
       send,
       ppg,
+      mustBeWithStudentId: selectedMustBeWithId,
       preferredFriends: preferredFriends.slice(0, 3),
       blacklistedStudents,
     });
@@ -185,10 +195,28 @@ export function AddStudentForm({ onClose }: Props) {
             <StudentSelect
               students={students}
               selectedIds={blacklistedStudents}
-              excludeIds={preferredFriends}
+              excludeIds={[...preferredFriends, ...mustBeWith]}
               onChange={setBlacklistedStudents}
               placeholder="Select students to avoid..."
             />
+          </div>
+
+          {/* Must Be With */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Must be with (optional)
+            </label>
+            <StudentSelect
+              students={students}
+              selectedIds={mustBeWith}
+              excludeIds={blacklistedStudents}
+              onChange={setMustBeWith}
+              maxSelections={1}
+              placeholder="Select one student..."
+            />
+            {pairError && (
+              <p className="mt-1 text-xs text-red-600">{pairError}</p>
+            )}
           </div>
 
           {/* Actions */}

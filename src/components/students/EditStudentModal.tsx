@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function EditStudentModal({ student, onClose }: Props) {
-  const { updateStudent, students } = useStudentStore();
+  const { updateStudent, setMustBeWithPair, students } = useStudentStore();
   const [name, setName] = useState(student.name);
   const [gender, setGender] = useState<Gender>(student.gender);
   const [isEAL, setIsEAL] = useState(student.isEAL);
@@ -20,10 +20,29 @@ export function EditStudentModal({ student, onClose }: Props) {
   const [ppg, setPpg] = useState(student.ppg);
   const [preferredFriends, setPreferredFriends] = useState<string[]>(student.preferredFriends);
   const [blacklistedStudents, setBlacklistedStudents] = useState<string[]>(student.blacklistedStudents);
+  const [mustBeWith, setMustBeWith] = useState<string[]>(
+    student.mustBeWithStudentId ? [student.mustBeWithStudentId] : []
+  );
+  const [pairError, setPairError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    const selectedMustBeWithId = mustBeWith[0] || null;
+    const selectedPartner = selectedMustBeWithId
+      ? students.find((s) => s.id === selectedMustBeWithId)
+      : undefined;
+    if (
+      selectedMustBeWithId &&
+      (
+        blacklistedStudents.includes(selectedMustBeWithId) ||
+        selectedPartner?.blacklistedStudents.includes(student.id)
+      )
+    ) {
+      setPairError('Must-be-with student cannot also be blacklisted.');
+      return;
+    }
 
     updateStudent(student.id, {
       name: name.trim(),
@@ -37,6 +56,13 @@ export function EditStudentModal({ student, onClose }: Props) {
       preferredFriends: preferredFriends.slice(0, 3),
       blacklistedStudents,
     });
+
+    const pairResult = setMustBeWithPair(student.id, selectedMustBeWithId);
+    if (!pairResult.success) {
+      setPairError(pairResult.error || 'Could not update must-be-with relationship.');
+      return;
+    }
+    setPairError('');
 
     onClose();
   };
@@ -186,11 +212,30 @@ export function EditStudentModal({ student, onClose }: Props) {
             <StudentSelect
               students={students}
               selectedIds={blacklistedStudents}
-              excludeIds={preferredFriends}
+              excludeIds={[...preferredFriends, ...mustBeWith]}
               excludeSelf={student.id}
               onChange={setBlacklistedStudents}
               placeholder="Select students to avoid..."
             />
+          </div>
+
+          {/* Must Be With */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Must be with (optional)
+            </label>
+            <StudentSelect
+              students={students}
+              selectedIds={mustBeWith}
+              excludeIds={blacklistedStudents}
+              excludeSelf={student.id}
+              onChange={setMustBeWith}
+              maxSelections={1}
+              placeholder="Select one student..."
+            />
+            {pairError && (
+              <p className="mt-1 text-xs text-red-600">{pairError}</p>
+            )}
           </div>
 
           {/* Actions */}

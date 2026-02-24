@@ -35,6 +35,7 @@ Uses **Zustand** with localStorage persistence. Three stores in `src/stores/`:
 - `id`, `name`, `gender` ('male'|'female'), `isEAL` (boolean)
 - `behavior` (1|2|3), `ability` (1|2|3)
 - `ehcp` (boolean), `send` (boolean), `ppg` (boolean)
+- `mustBeWithStudentId` (optional strict pair partner ID)
 - `preferredFriends` (max 3 student IDs), `blacklistedStudents` (student IDs)
 - `assignedClassId`
 
@@ -55,6 +56,7 @@ Tab-based navigation in `App.tsx` with five views:
 `src/utils/sortingAlgorithm.ts` uses **simulated annealing**:
 - Greedy initial assignment (most constrained students first)
 - Hard constraint: blacklist violations are never allowed
+- Hard constraint: must-be-with pairs are always kept together during sorting
 - Soft constraints optimized: friend placement, gender balance, EAL balance, behavior balance, ability balance, EHCP/SEND/PPG balance
 - Runs in chunks via setTimeout to avoid blocking UI
 

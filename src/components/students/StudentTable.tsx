@@ -209,6 +209,18 @@ export function StudentTable() {
           );
         },
       }),
+      columnHelper.accessor('mustBeWithStudentId', {
+        header: 'Must Be With',
+        cell: (info) => {
+          const partnerId = info.getValue();
+          if (!partnerId) return <span className="text-gray-400">None</span>;
+          return (
+            <span className="inline-flex px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">
+              {getStudentById(partnerId)?.name || 'Unknown'}
+            </span>
+          );
+        },
+      }),
       columnHelper.display({
         id: 'actions',
         header: '',

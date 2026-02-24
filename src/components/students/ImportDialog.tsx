@@ -15,6 +15,7 @@ interface ParsedRow {
   ehcp: boolean;
   send: boolean;
   ppg: boolean;
+  mustBeWithStudentName: string | null;
   preferredFriendNames: string[];
   blacklistedStudentNames: string[];
   isValid: boolean;
@@ -22,7 +23,7 @@ interface ParsedRow {
 }
 
 export function ImportDialog({ onClose }: Props) {
-  const { importStudents } = useStudentStore();
+  const { importStudents, students } = useStudentStore();
   const [_csvContent, setCsvContent] = useState('');
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [error, setError] = useState('');
@@ -60,6 +61,9 @@ export function ImportDialog({ onClose }: Props) {
     const ehcpIndex = headers.findIndex((h) => h.includes('ehcp') || h.includes('echp'));
     const sendIndex = headers.findIndex((h) => h.includes('send'));
     const ppgIndex = headers.findIndex((h) => h.includes('ppg'));
+    const mustBeWithIndex = headers.findIndex(
+      (h) => h.includes('must be with') || h.includes('mustwith') || h.includes('must_with')
+    );
     const friendsIndex = headers.findIndex((h) => h.includes('friend') || h.includes('prefer'));
     const blacklistIndex = headers.findIndex((h) => h.includes('blacklist') || h.includes('avoid') || h.includes('cannot'));
 
@@ -104,6 +108,17 @@ export function ImportDialog({ onClose }: Props) {
       const ehcp = ehcpIndex !== -1 ? parseBoolean(values[ehcpIndex] || '') : false;
       const send = sendIndex !== -1 ? parseBoolean(values[sendIndex] || '') : false;
       const ppg = ppgIndex !== -1 ? parseBoolean(values[ppgIndex] || '') : false;
+      let mustBeWithStudentName: string | null = null;
+      if (mustBeWithIndex !== -1) {
+        const mustBeWithValue = values[mustBeWithIndex]?.trim() || '';
+        if (mustBeWithValue) {
+          if (/[;|]/.test(mustBeWithValue)) {
+            errors.push('Must Be With must contain only one student name');
+          } else {
+            mustBeWithStudentName = mustBeWithValue;
+          }
+        }
+      }
 
       let preferredFriendNames: string[] = [];
       if (friendsIndex !== -1) {
@@ -133,6 +148,7 @@ export function ImportDialog({ onClose }: Props) {
         ehcp,
         send,
         ppg,
+        mustBeWithStudentName,
         preferredFriendNames,
         blacklistedStudentNames,
         isValid: errors.length === 0 && name.length > 0,
@@ -140,8 +156,44 @@ export function ImportDialog({ onClose }: Props) {
       });
     }
 
+    const importNames = new Set(
+      rows.map((r) => r.name.toLowerCase().trim()).filter(Boolean)
+    );
+    const existingNames = new Set(students.map((s) => s.name.toLowerCase().trim()));
+    const targetUsage = new Map<string, number>();
+    rows.forEach((row) => {
+      if (!row.mustBeWithStudentName) return;
+      const targetKey = row.mustBeWithStudentName.toLowerCase().trim();
+      targetUsage.set(targetKey, (targetUsage.get(targetKey) || 0) + 1);
+    });
+
+    rows.forEach((row) => {
+      if (!row.mustBeWithStudentName) return;
+
+      const sourceKey = row.name.toLowerCase().trim();
+      const targetKey = row.mustBeWithStudentName.toLowerCase().trim();
+      if (sourceKey === targetKey) {
+        row.errors.push('Must Be With cannot reference the same student');
+      }
+
+      const targetExists = importNames.has(targetKey) || existingNames.has(targetKey);
+      if (!targetExists) {
+        row.errors.push(`Must Be With target "${row.mustBeWithStudentName}" not found`);
+      }
+
+      if ((targetUsage.get(targetKey) || 0) > 1) {
+        row.errors.push('Multiple students cannot share the same Must Be With target in one import');
+      }
+
+      if (row.blacklistedStudentNames.some((n) => n.toLowerCase().trim() === targetKey)) {
+        row.errors.push('Must Be With target cannot also be blacklisted');
+      }
+
+      row.isValid = row.errors.length === 0 && row.name.length > 0;
+    });
+
     setParsedRows(rows);
-  }, []);
+  }, [students]);
 
   // Simple CSV line parser that handles quoted values
   const parseCSVLine = (line: string): string[] => {
@@ -184,22 +236,27 @@ export function ImportDialog({ onClose }: Props) {
       return;
     }
 
-    importStudents(
-      validRows.map((r) => ({
-        name: r.name,
-        gender: r.gender,
-        isEAL: r.isEAL,
-        behavior: r.behavior,
-        ability: r.ability,
-        ehcp: r.ehcp,
-        send: r.send,
-        ppg: r.ppg,
-        preferredFriendNames: r.preferredFriendNames,
-        blacklistedStudentNames: r.blacklistedStudentNames,
-      }))
-    );
+    try {
+      importStudents(
+        validRows.map((r) => ({
+          name: r.name,
+          gender: r.gender,
+          isEAL: r.isEAL,
+          behavior: r.behavior,
+          ability: r.ability,
+          ehcp: r.ehcp,
+          send: r.send,
+          ppg: r.ppg,
+          mustBeWithStudentName: r.mustBeWithStudentName || undefined,
+          preferredFriendNames: r.preferredFriendNames,
+          blacklistedStudentNames: r.blacklistedStudentNames,
+        }))
+      );
 
-    onClose();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed');
+    }
   };
 
   const validCount = parsedRows.filter((r) => r.isValid).length;
@@ -241,11 +298,12 @@ export function ImportDialog({ onClose }: Props) {
               <code className="bg-gray-200 px-1 rounded">ECHP</code> (Yes/No),{' '}
               <code className="bg-gray-200 px-1 rounded">SEND</code> (Yes/No),{' '}
               <code className="bg-gray-200 px-1 rounded">PPG</code> (Yes/No),{' '}
+              <code className="bg-gray-200 px-1 rounded">Must Be With</code> (single name),{' '}
               <code className="bg-gray-200 px-1 rounded">Preferred Friends</code> (names separated by ; or |),{' '}
               <code className="bg-gray-200 px-1 rounded">Blacklist</code> (names separated by ; or |)
             </p>
             <p className="text-gray-500 text-xs">
-              Example: Name,Gender,EAL,Behavior,Ability,EHCP,SEND,PPG,Friends,Blacklist
+              Example: Name,Gender,EAL,Behavior,Ability,EHCP,SEND,PPG,Must Be With,Friends,Blacklist
             </p>
           </div>
 
@@ -279,6 +337,7 @@ export function ImportDialog({ onClose }: Props) {
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">EHCP</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">SEND</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">PPG</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Must Be With</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Friends</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Status</th>
                     </tr>
@@ -294,6 +353,7 @@ export function ImportDialog({ onClose }: Props) {
                         <td className="px-3 py-2">{row.ehcp ? 'Yes' : 'No'}</td>
                         <td className="px-3 py-2">{row.send ? 'Yes' : 'No'}</td>
                         <td className="px-3 py-2">{row.ppg ? 'Yes' : 'No'}</td>
+                        <td className="px-3 py-2">{row.mustBeWithStudentName || '-'}</td>
                         <td className="px-3 py-2">{row.preferredFriendNames.join(', ') || '-'}</td>
                         <td className="px-3 py-2">
                           {row.isValid ? (
