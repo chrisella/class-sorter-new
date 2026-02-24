@@ -8,6 +8,11 @@ export function exportStudentsCSV(
     'Name',
     'Gender',
     'EAL',
+    'Behavior',
+    'Ability',
+    'EHCP',
+    'SEND',
+    'PPG',
     'Preferred Friends',
     'Blacklisted Students',
   ];
@@ -26,6 +31,11 @@ export function exportStudentsCSV(
       student.name,
       student.gender === 'male' ? 'M' : 'F',
       student.isEAL ? 'Yes' : 'No',
+      student.behavior.toString(),
+      student.ability.toString(),
+      student.ehcp ? 'Yes' : 'No',
+      student.send ? 'Yes' : 'No',
+      student.ppg ? 'Yes' : 'No',
       preferredFriendNames || '',
       blacklistedNames || '',
     ];
@@ -56,6 +66,11 @@ export function exportToCSV(
     'Name',
     'Gender',
     'EAL',
+    'Behavior',
+    'Ability',
+    'EHCP',
+    'SEND',
+    'PPG',
     'Assigned Class',
     'Preferred Friends',
     'Friends in Class',
@@ -83,6 +98,11 @@ export function exportToCSV(
       student.name,
       student.gender === 'male' ? 'M' : 'F',
       student.isEAL ? 'Yes' : 'No',
+      student.behavior.toString(),
+      student.ability.toString(),
+      student.ehcp ? 'Yes' : 'No',
+      student.send ? 'Yes' : 'No',
+      student.ppg ? 'Yes' : 'No',
       assignedClass?.name || 'Unassigned',
       preferredFriendNames || '-',
       `${friendsInClass}/${student.preferredFriends.length}`,
@@ -192,6 +212,11 @@ function generatePDFHTML(
               <th>Name</th>
               <th>Gender</th>
               <th>EAL</th>
+              <th>Behavior</th>
+              <th>Ability</th>
+              <th>EHCP</th>
+              <th>SEND</th>
+              <th>PPG</th>
               <th>Preferred Friends</th>
               <th>Matched</th>
             </tr>
@@ -214,6 +239,11 @@ function generatePDFHTML(
                     <td>${student.name}</td>
                     <td>${student.gender === 'male' ? 'M' : 'F'}</td>
                     <td>${student.isEAL ? 'Yes' : '-'}</td>
+                    <td>${student.behavior}</td>
+                    <td>${student.ability}</td>
+                    <td>${student.ehcp ? 'Yes' : '-'}</td>
+                    <td>${student.send ? 'Yes' : '-'}</td>
+                    <td>${student.ppg ? 'Yes' : '-'}</td>
                     <td>${friendsList}</td>
                     <td>${friendsInClass}/${student.preferredFriends.length}</td>
                   </tr>

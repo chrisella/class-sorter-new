@@ -26,17 +26,24 @@ Each child has the following properties:
 - Blacklisted children they should not be placed with under any circumstances
 - Gender (Male or Female)
 - EAL (English as an additional Language) - *A boolean*
+- Behavior rank (1-3)
+- Ability rank (1-3)
+- EHCP - *A boolean*
+- SEND - *A boolean*
+- PPG - *A boolean*
 
 ## Implemented Features
 
 ### Students Tab
 
-- **CSV Import**: Import students from CSV files with automatic column detection for name, gender, EAL, preferred friends, and blacklisted students
+- **CSV Import**: Import students from CSV files with automatic column detection for name, gender, EAL, behavior, ability, EHCP/SEND/PPG, preferred friends, and blacklisted students
 - **CSV Export**: Export the raw student list to CSV for backup or transferring between machines (compatible with the import format)
 - **Add/Edit Students**: Modal forms for adding new students and editing existing ones with full property support
 - **Inline Editing**: Gender and EAL properties can be quickly toggled by clicking directly on the badges in the student table
   - Click the M/F badge to toggle between Male and Female
   - Click the Yes/No badge to toggle EAL status
+  - Click behavior/ability badges to cycle between ranks 1, 2, and 3
+  - Click EHCP/SEND/PPG badges to toggle Yes/No
 
 ### Results Tab
 

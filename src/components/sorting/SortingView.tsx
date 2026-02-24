@@ -46,6 +46,21 @@ export function SortingView() {
 
   const totalBlacklists = students.reduce((sum, s) => sum + s.blacklistedStudents.length, 0);
   const totalPreferences = students.reduce((sum, s) => sum + s.preferredFriends.length, 0);
+  const totalEHCP = students.filter((s) => s.ehcp).length;
+  const totalSEND = students.filter((s) => s.send).length;
+  const totalPPG = students.filter((s) => s.ppg).length;
+  const safeWeight = (value: number | undefined, fallback: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  const priorityWeights = {
+    friendPreference: safeWeight(sortingConfig.priorityWeights.friendPreference, 0.6),
+    genderBalance: safeWeight(sortingConfig.priorityWeights.genderBalance, 0.2),
+    ealBalance: safeWeight(sortingConfig.priorityWeights.ealBalance, 0.2),
+    behaviorBalance: safeWeight(sortingConfig.priorityWeights.behaviorBalance, 0.2),
+    abilityBalance: safeWeight(sortingConfig.priorityWeights.abilityBalance, 0.2),
+    ehcpBalance: safeWeight(sortingConfig.priorityWeights.ehcpBalance, 0.2),
+    sendBalance: safeWeight(sortingConfig.priorityWeights.sendBalance, 0.2),
+    ppgBalance: safeWeight(sortingConfig.priorityWeights.ppgBalance, 0.2),
+  };
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -108,6 +123,18 @@ export function SortingView() {
             <p className="text-lg font-medium">{students.filter((s) => s.isEAL).length}</p>
           </div>
           <div>
+            <p className="text-gray-500">EHCP students</p>
+            <p className="text-lg font-medium">{totalEHCP}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">SEND students</p>
+            <p className="text-lg font-medium">{totalSEND}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">PPG students</p>
+            <p className="text-lg font-medium">{totalPPG}</p>
+          </div>
+          <div>
             <p className="text-gray-500">Students per class (avg)</p>
             <p className="text-lg font-medium">
               {classes.length > 0 ? Math.round(students.length / classes.length) : '-'}
@@ -124,18 +151,18 @@ export function SortingView() {
             <div className="flex items-center justify-between mb-1">
               <label className="text-sm text-gray-700">Friend Preferences</label>
               <span className="text-sm text-gray-500">
-                {Math.round(sortingConfig.priorityWeights.friendPreference * 100)}%
+                {Math.round(priorityWeights.friendPreference * 100)}%
               </span>
             </div>
             <input
               type="range"
               min="0"
               max="100"
-              value={sortingConfig.priorityWeights.friendPreference * 100}
+              value={priorityWeights.friendPreference * 100}
               onChange={(e) =>
                 setSortingConfig({
                   priorityWeights: {
-                    ...sortingConfig.priorityWeights,
+                    ...priorityWeights,
                     friendPreference: parseInt(e.target.value, 10) / 100,
                   },
                 })
@@ -147,18 +174,18 @@ export function SortingView() {
             <div className="flex items-center justify-between mb-1">
               <label className="text-sm text-gray-700">Gender Balance</label>
               <span className="text-sm text-gray-500">
-                {Math.round(sortingConfig.priorityWeights.genderBalance * 100)}%
+                {Math.round(priorityWeights.genderBalance * 100)}%
               </span>
             </div>
             <input
               type="range"
               min="0"
               max="100"
-              value={sortingConfig.priorityWeights.genderBalance * 100}
+              value={priorityWeights.genderBalance * 100}
               onChange={(e) =>
                 setSortingConfig({
                   priorityWeights: {
-                    ...sortingConfig.priorityWeights,
+                    ...priorityWeights,
                     genderBalance: parseInt(e.target.value, 10) / 100,
                   },
                 })
@@ -170,19 +197,134 @@ export function SortingView() {
             <div className="flex items-center justify-between mb-1">
               <label className="text-sm text-gray-700">EAL Balance</label>
               <span className="text-sm text-gray-500">
-                {Math.round(sortingConfig.priorityWeights.ealBalance * 100)}%
+                {Math.round(priorityWeights.ealBalance * 100)}%
               </span>
             </div>
             <input
               type="range"
               min="0"
               max="100"
-              value={sortingConfig.priorityWeights.ealBalance * 100}
+              value={priorityWeights.ealBalance * 100}
               onChange={(e) =>
                 setSortingConfig({
                   priorityWeights: {
-                    ...sortingConfig.priorityWeights,
+                    ...priorityWeights,
                     ealBalance: parseInt(e.target.value, 10) / 100,
+                  },
+                })
+              }
+              className="w-full"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm text-gray-700">Behavior Balance</label>
+              <span className="text-sm text-gray-500">
+                {Math.round(priorityWeights.behaviorBalance * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={priorityWeights.behaviorBalance * 100}
+              onChange={(e) =>
+                setSortingConfig({
+                  priorityWeights: {
+                    ...priorityWeights,
+                    behaviorBalance: parseInt(e.target.value, 10) / 100,
+                  },
+                })
+              }
+              className="w-full"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm text-gray-700">Ability Balance</label>
+              <span className="text-sm text-gray-500">
+                {Math.round(priorityWeights.abilityBalance * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={priorityWeights.abilityBalance * 100}
+              onChange={(e) =>
+                setSortingConfig({
+                  priorityWeights: {
+                    ...priorityWeights,
+                    abilityBalance: parseInt(e.target.value, 10) / 100,
+                  },
+                })
+              }
+              className="w-full"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm text-gray-700">EHCP Balance</label>
+              <span className="text-sm text-gray-500">
+                {Math.round(priorityWeights.ehcpBalance * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={priorityWeights.ehcpBalance * 100}
+              onChange={(e) =>
+                setSortingConfig({
+                  priorityWeights: {
+                    ...priorityWeights,
+                    ehcpBalance: parseInt(e.target.value, 10) / 100,
+                  },
+                })
+              }
+              className="w-full"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm text-gray-700">SEND Balance</label>
+              <span className="text-sm text-gray-500">
+                {Math.round(priorityWeights.sendBalance * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={priorityWeights.sendBalance * 100}
+              onChange={(e) =>
+                setSortingConfig({
+                  priorityWeights: {
+                    ...priorityWeights,
+                    sendBalance: parseInt(e.target.value, 10) / 100,
+                  },
+                })
+              }
+              className="w-full"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm text-gray-700">PPG Balance</label>
+              <span className="text-sm text-gray-500">
+                {Math.round(priorityWeights.ppgBalance * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={priorityWeights.ppgBalance * 100}
+              onChange={(e) =>
+                setSortingConfig({
+                  priorityWeights: {
+                    ...priorityWeights,
+                    ppgBalance: parseInt(e.target.value, 10) / 100,
                   },
                 })
               }

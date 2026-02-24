@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useStudentStore } from '../../stores';
-import type { Gender } from '../../types';
+import type { Gender, Rank } from '../../types';
 
 interface Props {
   onClose: () => void;
@@ -10,6 +10,11 @@ interface ParsedRow {
   name: string;
   gender: Gender;
   isEAL: boolean;
+  behavior: Rank;
+  ability: Rank;
+  ehcp: boolean;
+  send: boolean;
+  ppg: boolean;
   preferredFriendNames: string[];
   blacklistedStudentNames: string[];
   isValid: boolean;
@@ -21,6 +26,21 @@ export function ImportDialog({ onClose }: Props) {
   const [_csvContent, setCsvContent] = useState('');
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [error, setError] = useState('');
+
+  const parseBoolean = (value: string): boolean => {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'yes' || normalized === 'true' || normalized === '1' || normalized === 'y';
+  };
+
+  const parseRank = (value: string, fieldName: string, errors: string[]): Rank => {
+    const normalized = value.trim();
+    if (!normalized) return 2;
+    if (normalized === '1' || normalized === '2' || normalized === '3') {
+      return Number(normalized) as Rank;
+    }
+    errors.push(`${fieldName} must be 1, 2, or 3`);
+    return 2;
+  };
 
   const parseCSV = useCallback((content: string) => {
     setError('');
@@ -35,6 +55,11 @@ export function ImportDialog({ onClose }: Props) {
     const nameIndex = headers.findIndex((h) => h.includes('name'));
     const genderIndex = headers.findIndex((h) => h.includes('gender'));
     const ealIndex = headers.findIndex((h) => h.includes('eal'));
+    const behaviorIndex = headers.findIndex((h) => h.includes('behavior'));
+    const abilityIndex = headers.findIndex((h) => h.includes('ability'));
+    const ehcpIndex = headers.findIndex((h) => h.includes('ehcp') || h.includes('echp'));
+    const sendIndex = headers.findIndex((h) => h.includes('send'));
+    const ppgIndex = headers.findIndex((h) => h.includes('ppg'));
     const friendsIndex = headers.findIndex((h) => h.includes('friend') || h.includes('prefer'));
     const blacklistIndex = headers.findIndex((h) => h.includes('blacklist') || h.includes('avoid') || h.includes('cannot'));
 
@@ -67,8 +92,18 @@ export function ImportDialog({ onClose }: Props) {
       let isEAL = false;
       if (ealIndex !== -1) {
         const ealValue = values[ealIndex]?.trim().toLowerCase() || '';
-        isEAL = ealValue === 'yes' || ealValue === 'true' || ealValue === '1' || ealValue === 'y';
+        isEAL = parseBoolean(ealValue);
       }
+
+      const behavior = behaviorIndex !== -1
+        ? parseRank(values[behaviorIndex] || '', 'Behavior', errors)
+        : 2;
+      const ability = abilityIndex !== -1
+        ? parseRank(values[abilityIndex] || '', 'Ability', errors)
+        : 2;
+      const ehcp = ehcpIndex !== -1 ? parseBoolean(values[ehcpIndex] || '') : false;
+      const send = sendIndex !== -1 ? parseBoolean(values[sendIndex] || '') : false;
+      const ppg = ppgIndex !== -1 ? parseBoolean(values[ppgIndex] || '') : false;
 
       let preferredFriendNames: string[] = [];
       if (friendsIndex !== -1) {
@@ -93,6 +128,11 @@ export function ImportDialog({ onClose }: Props) {
         name,
         gender,
         isEAL,
+        behavior,
+        ability,
+        ehcp,
+        send,
+        ppg,
         preferredFriendNames,
         blacklistedStudentNames,
         isValid: errors.length === 0 && name.length > 0,
@@ -149,6 +189,11 @@ export function ImportDialog({ onClose }: Props) {
         name: r.name,
         gender: r.gender,
         isEAL: r.isEAL,
+        behavior: r.behavior,
+        ability: r.ability,
+        ehcp: r.ehcp,
+        send: r.send,
+        ppg: r.ppg,
         preferredFriendNames: r.preferredFriendNames,
         blacklistedStudentNames: r.blacklistedStudentNames,
       }))
@@ -190,11 +235,17 @@ export function ImportDialog({ onClose }: Props) {
             <p className="text-gray-600 mb-2">
               Optional columns: <code className="bg-gray-200 px-1 rounded">Gender</code> (M/F),{' '}
               <code className="bg-gray-200 px-1 rounded">EAL</code> (Yes/No),{' '}
+              <code className="bg-gray-200 px-1 rounded">Behavior</code> (1/2/3),{' '}
+              <code className="bg-gray-200 px-1 rounded">Ability</code> (1/2/3),{' '}
+              <code className="bg-gray-200 px-1 rounded">EHCP</code> or{' '}
+              <code className="bg-gray-200 px-1 rounded">ECHP</code> (Yes/No),{' '}
+              <code className="bg-gray-200 px-1 rounded">SEND</code> (Yes/No),{' '}
+              <code className="bg-gray-200 px-1 rounded">PPG</code> (Yes/No),{' '}
               <code className="bg-gray-200 px-1 rounded">Preferred Friends</code> (names separated by ; or |),{' '}
               <code className="bg-gray-200 px-1 rounded">Blacklist</code> (names separated by ; or |)
             </p>
             <p className="text-gray-500 text-xs">
-              Example: Name,Gender,EAL,Friends,Blacklist
+              Example: Name,Gender,EAL,Behavior,Ability,EHCP,SEND,PPG,Friends,Blacklist
             </p>
           </div>
 
@@ -223,6 +274,11 @@ export function ImportDialog({ onClose }: Props) {
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Name</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Gender</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">EAL</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Behavior</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Ability</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">EHCP</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">SEND</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">PPG</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Friends</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Status</th>
                     </tr>
@@ -233,6 +289,11 @@ export function ImportDialog({ onClose }: Props) {
                         <td className="px-3 py-2">{row.name || '-'}</td>
                         <td className="px-3 py-2">{row.gender === 'male' ? 'M' : 'F'}</td>
                         <td className="px-3 py-2">{row.isEAL ? 'Yes' : 'No'}</td>
+                        <td className="px-3 py-2">{row.behavior}</td>
+                        <td className="px-3 py-2">{row.ability}</td>
+                        <td className="px-3 py-2">{row.ehcp ? 'Yes' : 'No'}</td>
+                        <td className="px-3 py-2">{row.send ? 'Yes' : 'No'}</td>
+                        <td className="px-3 py-2">{row.ppg ? 'Yes' : 'No'}</td>
                         <td className="px-3 py-2">{row.preferredFriendNames.join(', ') || '-'}</td>
                         <td className="px-3 py-2">
                           {row.isValid ? (
