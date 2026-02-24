@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import type { Student, Gender } from '../types';
+import type { Student, Gender, Rank } from '../types';
 
 interface StudentState {
   students: Student[];
@@ -15,6 +15,11 @@ interface StudentState {
     name: string;
     gender: Gender;
     isEAL: boolean;
+    behavior: Rank;
+    ability: Rank;
+    ehcp: boolean;
+    send: boolean;
+    ppg: boolean;
     preferredFriendNames: string[];
     blacklistedStudentNames: string[];
   }>) => void;
@@ -87,6 +92,11 @@ export const useStudentStore = create<StudentState>()(
           name: data.name,
           gender: data.gender,
           isEAL: data.isEAL,
+          behavior: data.behavior,
+          ability: data.ability,
+          ehcp: data.ehcp,
+          send: data.send,
+          ppg: data.ppg,
           preferredFriends: [],
           blacklistedStudents: [],
           assignedClassId: null,

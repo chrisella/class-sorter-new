@@ -226,6 +226,20 @@ function calculateScore(
   const ealBalance = calculateEALBalance(students, classes, assignment);
   score += weights.ealBalance * ealBalance;
 
+  // Behavior and ability mean balance scores
+  const behaviorBalance = calculateRankBalance(students, classes, assignment, 'behavior');
+  score += weights.behaviorBalance * behaviorBalance;
+  const abilityBalance = calculateRankBalance(students, classes, assignment, 'ability');
+  score += weights.abilityBalance * abilityBalance;
+
+  // EHCP/SEND/PPG ratio balance scores
+  const ehcpBalance = calculateBooleanBalance(students, classes, assignment, 'ehcp');
+  score += weights.ehcpBalance * ehcpBalance;
+  const sendBalance = calculateBooleanBalance(students, classes, assignment, 'send');
+  score += weights.sendBalance * sendBalance;
+  const ppgBalance = calculateBooleanBalance(students, classes, assignment, 'ppg');
+  score += weights.ppgBalance * ppgBalance;
+
   return score;
 }
 
@@ -304,6 +318,78 @@ function calculateEALBalance(
   const mean = ratios.reduce((a, b) => a + b, 0) / ratios.length;
   const variance = ratios.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / ratios.length;
 
+  return Math.max(0, 1 - variance * 4);
+}
+
+function calculateRankBalance(
+  students: Student[],
+  classes: Class[],
+  assignment: Assignment,
+  field: 'behavior' | 'ability'
+): number {
+  const classStats = new Map<string, { sum: number; total: number }>();
+  for (const cls of classes) {
+    classStats.set(cls.id, { sum: 0, total: 0 });
+  }
+
+  for (const student of students) {
+    const classId = assignment.get(student.id);
+    if (!classId) continue;
+
+    const stats = classStats.get(classId);
+    if (stats) {
+      stats.total++;
+      stats.sum += student[field];
+    }
+  }
+
+  const means: number[] = [];
+  for (const stats of classStats.values()) {
+    if (stats.total > 0) {
+      means.push(stats.sum / stats.total);
+    }
+  }
+
+  if (means.length === 0) return 1;
+
+  const mean = means.reduce((a, b) => a + b, 0) / means.length;
+  const variance = means.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / means.length;
+  return Math.max(0, 1 - variance);
+}
+
+function calculateBooleanBalance(
+  students: Student[],
+  classes: Class[],
+  assignment: Assignment,
+  field: 'ehcp' | 'send' | 'ppg'
+): number {
+  const classCounts = new Map<string, { matching: number; total: number }>();
+  for (const cls of classes) {
+    classCounts.set(cls.id, { matching: 0, total: 0 });
+  }
+
+  for (const student of students) {
+    const classId = assignment.get(student.id);
+    if (!classId) continue;
+
+    const counts = classCounts.get(classId);
+    if (counts) {
+      counts.total++;
+      if (student[field]) counts.matching++;
+    }
+  }
+
+  const ratios: number[] = [];
+  for (const counts of classCounts.values()) {
+    if (counts.total > 0) {
+      ratios.push(counts.matching / counts.total);
+    }
+  }
+
+  if (ratios.length === 0) return 1;
+
+  const mean = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+  const variance = ratios.reduce((sum, ratio) => sum + Math.pow(ratio - mean, 2), 0) / ratios.length;
   return Math.max(0, 1 - variance * 4);
 }
 

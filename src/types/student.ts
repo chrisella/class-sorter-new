@@ -1,10 +1,16 @@
 export type Gender = 'male' | 'female';
+export type Rank = 1 | 2 | 3;
 
 export interface Student {
   id: string;
   name: string;
   gender: Gender;
   isEAL: boolean;
+  behavior: Rank;
+  ability: Rank;
+  ehcp: boolean;
+  send: boolean;
+  ppg: boolean;
   preferredFriends: string[];      // Max 3 student IDs
   blacklistedStudents: string[];   // Cannot be in same class
   assignedClassId: string | null;
@@ -16,6 +22,11 @@ export interface StudentInput {
   name: string;
   gender: Gender;
   isEAL: boolean;
+  behavior: Rank;
+  ability: Rank;
+  ehcp: boolean;
+  send: boolean;
+  ppg: boolean;
   preferredFriendNames: string[];      // Names for input, resolved to IDs
   blacklistedStudentNames: string[];   // Names for input, resolved to IDs
 }

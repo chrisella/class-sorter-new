@@ -279,6 +279,9 @@ export function ResultsView() {
                     {classStudents.filter((s) => s.gender === 'female').length}F
                   </span>
                   <span>{classStudents.filter((s) => s.isEAL).length} EAL</span>
+                  <span>{classStudents.filter((s) => s.ehcp).length} EHCP</span>
+                  <span>{classStudents.filter((s) => s.send).length} SEND</span>
+                  <span>{classStudents.filter((s) => s.ppg).length} PPG</span>
                 </div>
               </div>
 

@@ -26,6 +26,11 @@ const defaultSortingConfig: SortingConfiguration = {
     friendPreference: 0.6,
     genderBalance: 0.2,
     ealBalance: 0.2,
+    behaviorBalance: 0.2,
+    abilityBalance: 0.2,
+    ehcpBalance: 0.2,
+    sendBalance: 0.2,
+    ppgBalance: 0.2,
   },
   maxIterations: 10000,
 };

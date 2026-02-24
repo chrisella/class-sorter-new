@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStudentStore } from '../../stores';
-import type { Student, Gender } from '../../types';
+import type { Student, Gender, Rank } from '../../types';
 import { StudentSelect } from './StudentSelect';
 
 interface Props {
@@ -13,6 +13,11 @@ export function EditStudentModal({ student, onClose }: Props) {
   const [name, setName] = useState(student.name);
   const [gender, setGender] = useState<Gender>(student.gender);
   const [isEAL, setIsEAL] = useState(student.isEAL);
+  const [behavior, setBehavior] = useState<Rank>(student.behavior);
+  const [ability, setAbility] = useState<Rank>(student.ability);
+  const [ehcp, setEhcp] = useState(student.ehcp);
+  const [send, setSend] = useState(student.send);
+  const [ppg, setPpg] = useState(student.ppg);
   const [preferredFriends, setPreferredFriends] = useState<string[]>(student.preferredFriends);
   const [blacklistedStudents, setBlacklistedStudents] = useState<string[]>(student.blacklistedStudents);
 
@@ -24,6 +29,11 @@ export function EditStudentModal({ student, onClose }: Props) {
       name: name.trim(),
       gender,
       isEAL,
+      behavior,
+      ability,
+      ehcp,
+      send,
+      ppg,
       preferredFriends: preferredFriends.slice(0, 3),
       blacklistedStudents,
     });
@@ -90,6 +100,65 @@ export function EditStudentModal({ student, onClose }: Props) {
               <span className="text-sm font-medium text-gray-700">
                 English as Additional Language (EAL)
               </span>
+            </label>
+          </div>
+
+          {/* Behavior and Ability */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Behavior</label>
+              <select
+                value={behavior}
+                onChange={(e) => setBehavior(Number(e.target.value) as Rank)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ability</label>
+              <select
+                value={ability}
+                onChange={(e) => setAbility(Number(e.target.value) as Rank)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Additional Needs/Funding */}
+          <div className="grid grid-cols-3 gap-3">
+            <label className="flex items-center text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={ehcp}
+                onChange={(e) => setEhcp(e.target.checked)}
+                className="mr-2 rounded"
+              />
+              EHCP
+            </label>
+            <label className="flex items-center text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={send}
+                onChange={(e) => setSend(e.target.checked)}
+                className="mr-2 rounded"
+              />
+              SEND
+            </label>
+            <label className="flex items-center text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={ppg}
+                onChange={(e) => setPpg(e.target.checked)}
+                className="mr-2 rounded"
+              />
+              PPG
             </label>
           </div>
 

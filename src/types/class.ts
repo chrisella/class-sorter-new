@@ -28,6 +28,11 @@ export interface SortingConfiguration {
     friendPreference: number;        // Weight for friend placement (0-1)
     genderBalance: number;           // Weight for gender balance (0-1)
     ealBalance: number;              // Weight for EAL distribution (0-1)
+    behaviorBalance: number;         // Weight for behavior balance (0-1)
+    abilityBalance: number;          // Weight for ability balance (0-1)
+    ehcpBalance: number;             // Weight for EHCP distribution (0-1)
+    sendBalance: number;             // Weight for SEND distribution (0-1)
+    ppgBalance: number;              // Weight for PPG distribution (0-1)
   };
   maxIterations: number;
 }

@@ -41,6 +41,17 @@ export function StatisticsView() {
         male: classStudents.filter((s) => s.gender === 'male').length,
         female: classStudents.filter((s) => s.gender === 'female').length,
         eal: classStudents.filter((s) => s.isEAL).length,
+        behaviorAvg:
+          classStudents.length > 0
+            ? classStudents.reduce((sum, s) => sum + s.behavior, 0) / classStudents.length
+            : 0,
+        abilityAvg:
+          classStudents.length > 0
+            ? classStudents.reduce((sum, s) => sum + s.ability, 0) / classStudents.length
+            : 0,
+        ehcp: classStudents.filter((s) => s.ehcp).length,
+        send: classStudents.filter((s) => s.send).length,
+        ppg: classStudents.filter((s) => s.ppg).length,
         avgSatisfaction:
           classSatisfaction.length > 0
             ? classSatisfaction.reduce((sum, s) => sum + s.score, 0) / classSatisfaction.length
@@ -57,6 +68,17 @@ export function StatisticsView() {
       totalMale: assignedStudents.filter((s) => s.gender === 'male').length,
       totalFemale: assignedStudents.filter((s) => s.gender === 'female').length,
       totalEAL: assignedStudents.filter((s) => s.isEAL).length,
+      totalEHCP: assignedStudents.filter((s) => s.ehcp).length,
+      totalSEND: assignedStudents.filter((s) => s.send).length,
+      totalPPG: assignedStudents.filter((s) => s.ppg).length,
+      overallBehavior:
+        assignedStudents.length > 0
+          ? assignedStudents.reduce((sum, s) => sum + s.behavior, 0) / assignedStudents.length
+          : 0,
+      overallAbility:
+        assignedStudents.length > 0
+          ? assignedStudents.reduce((sum, s) => sum + s.ability, 0) / assignedStudents.length
+          : 0,
     };
   }, [assignedStudents, classes, students]);
 
@@ -84,7 +106,20 @@ export function StatisticsView() {
     );
   }
 
-  const { avgSatisfaction, satisfactionDistribution, classStats, totalStudents, totalMale, totalFemale, totalEAL } = statistics;
+  const {
+    avgSatisfaction,
+    satisfactionDistribution,
+    classStats,
+    totalStudents,
+    totalMale,
+    totalFemale,
+    totalEAL,
+    totalEHCP,
+    totalSEND,
+    totalPPG,
+    overallBehavior,
+    overallAbility,
+  } = statistics;
 
   return (
     <div className="space-y-6">
@@ -114,6 +149,30 @@ export function StatisticsView() {
           <p className={`text-2xl font-bold ${satisfactionDistribution.violations > 0 ? 'text-red-600' : 'text-green-600'}`}>
             {satisfactionDistribution.violations}
           </p>
+        </div>
+      </div>
+
+      {/* Additional Student Factors */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Behavior Avg</p>
+          <p className="text-2xl font-bold text-gray-900">{overallBehavior.toFixed(2)}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Ability Avg</p>
+          <p className="text-2xl font-bold text-gray-900">{overallAbility.toFixed(2)}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">EHCP</p>
+          <p className="text-2xl font-bold text-gray-900">{totalEHCP}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">SEND</p>
+          <p className="text-2xl font-bold text-gray-900">{totalSEND}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">PPG</p>
+          <p className="text-2xl font-bold text-gray-900">{totalPPG}</p>
         </div>
       </div>
 
@@ -163,6 +222,65 @@ export function StatisticsView() {
               />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Additional Factors by Class */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="font-medium text-gray-900 mb-4">Additional Factors by Class</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  Class
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  Behavior Avg
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  Ability Avg
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  EHCP
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  SEND
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  PPG
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {classStats.map((cls) => (
+                <tr key={cls.id}>
+                  <td className="px-4 py-2 text-sm font-medium text-gray-900">{cls.name}</td>
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">
+                    {cls.total > 0 ? cls.behaviorAvg.toFixed(2) : '-'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">
+                    {cls.total > 0 ? cls.abilityAvg.toFixed(2) : '-'}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.ehcp}</td>
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.send}</td>
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.ppg}</td>
+                </tr>
+              ))}
+              <tr className="bg-gray-50 font-medium">
+                <td className="px-4 py-2 text-sm text-gray-900">Total</td>
+                <td className="px-4 py-2 text-sm text-right text-gray-900">
+                  {overallBehavior.toFixed(2)}
+                </td>
+                <td className="px-4 py-2 text-sm text-right text-gray-900">
+                  {overallAbility.toFixed(2)}
+                </td>
+                <td className="px-4 py-2 text-sm text-right text-gray-900">{totalEHCP}</td>
+                <td className="px-4 py-2 text-sm text-right text-gray-900">{totalSEND}</td>
+                <td className="px-4 py-2 text-sm text-right text-gray-900">{totalPPG}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
