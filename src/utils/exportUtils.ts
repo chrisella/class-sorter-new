@@ -205,6 +205,14 @@ function generatePDFHTML(
   for (const cls of classes) {
     const classStudents = students.filter((s) => s.assignedClassId === cls.id);
     const stats = classStatistics?.find((cs) => cs.classId === cls.id);
+    const behaviorAverage =
+      classStudents.length > 0
+        ? classStudents.reduce((sum, s) => sum + s.behavior, 0) / classStudents.length
+        : 0;
+    const abilityAverage =
+      classStudents.length > 0
+        ? classStudents.reduce((sum, s) => sum + s.ability, 0) / classStudents.length
+        : 0;
 
     classesHTML += `
       <div class="class-section">
@@ -214,6 +222,11 @@ function generatePDFHTML(
           <span>Male: ${classStudents.filter((s) => s.gender === 'male').length}</span>
           <span>Female: ${classStudents.filter((s) => s.gender === 'female').length}</span>
           <span>EAL: ${classStudents.filter((s) => s.isEAL).length}</span>
+          <span>EHCP: ${classStudents.filter((s) => s.ehcp).length}</span>
+          <span>SEND: ${classStudents.filter((s) => s.send).length}</span>
+          <span>PPG: ${classStudents.filter((s) => s.ppg).length}</span>
+          <span>Behavior Avg: ${behaviorAverage.toFixed(2)}</span>
+          <span>Ability Avg: ${abilityAverage.toFixed(2)}</span>
           ${stats ? `<span>Satisfaction: ${stats.averageSatisfaction.toFixed(0)}%</span>` : ''}
         </div>
         <table>
