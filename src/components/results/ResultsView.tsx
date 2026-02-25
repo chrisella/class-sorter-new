@@ -4,7 +4,7 @@ import { useClassStore, useStudentStore } from '../../stores';
 import { calculateStudentSatisfaction } from '../../utils/sortingAlgorithm';
 import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
 import { AlertDialog } from '../shared/ConfirmDialog';
-import type { Student } from '../../types';
+import type { Student, ClassStatistics } from '../../types';
 
 interface FriendsTooltipProps {
   student: Student;
@@ -147,13 +147,46 @@ function StudentCard({
 }
 
 export function ResultsView() {
-  const { classes, lastSortingResult } = useClassStore();
+  const { classes } = useClassStore();
   const { students, assignStudentToClass, getStudentById } = useStudentStore();
   const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
   const [showViolationAlert, setShowViolationAlert] = useState(false);
   const [pairWarningMessage, setPairWarningMessage] = useState<string | null>(null);
 
   const assignedStudents = students.filter((s) => s.assignedClassId !== null);
+
+  const calculateClassStatistics = (classId: string): ClassStatistics | undefined => {
+    const classStudents = students.filter((s) => s.assignedClassId === classId);
+    if (classStudents.length === 0) return undefined;
+
+    const studentSatisfaction: ClassStatistics['studentSatisfaction'] = classStudents.map((student) =>
+      calculateStudentSatisfaction(student, classId, students)
+    );
+
+    const totalSatisfaction = studentSatisfaction.reduce((sum, s) => sum + s.score, 0);
+    const avgSatisfaction = classStudents.length > 0 ? totalSatisfaction / classStudents.length : 100;
+
+    return {
+      classId,
+      className: classes.find((c) => c.id === classId)?.name || '',
+      totalStudents: classStudents.length,
+      genderDistribution: {
+        male: classStudents.filter((s) => s.gender === 'male').length,
+        female: classStudents.filter((s) => s.gender === 'female').length,
+      },
+      ealCount: classStudents.filter((s) => s.isEAL).length,
+      ealPercentage:
+        classStudents.length > 0
+          ? (classStudents.filter((s) => s.isEAL).length / classStudents.length) * 100
+          : 0,
+      averageSatisfaction: avgSatisfaction,
+      studentSatisfaction,
+    };
+  };
+
+  const getClassStats = (classId: string) => {
+    return calculateClassStatistics(classId);
+  };
 
   if (assignedStudents.length === 0) {
     return (
@@ -227,15 +260,10 @@ export function ResultsView() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
+<div>
           <h2 className="text-lg font-medium text-gray-900">Class Assignments</h2>
           <p className="text-sm text-gray-500">
             Drag and drop students between classes to make adjustments.
-            {lastSortingResult && (
-              <span className="ml-2">
-                Overall satisfaction: {lastSortingResult.overallSatisfaction.toFixed(1)}%
-              </span>
-            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -246,7 +274,7 @@ export function ResultsView() {
             Export CSV
           </button>
           <button
-            onClick={() => exportToPDF(students, classes, lastSortingResult?.classStatistics, getStudentById)}
+            onClick={() => exportToPDF(students, classes, undefined, getStudentById)}
             className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
           >
             Export PDF
@@ -254,10 +282,10 @@ export function ResultsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {classes.map((cls) => {
           const classStudents = students.filter((s) => s.assignedClassId === cls.id);
-          const stats = lastSortingResult?.classStatistics.find((cs) => cs.classId === cls.id);
+          const stats = getClassStats(cls.id);
 
           return (
             <div
@@ -279,11 +307,11 @@ export function ResultsView() {
                     <p className="text-sm font-medium text-gray-900">
                       {classStudents.length} students
                     </p>
-                    {stats && (
-                      <p className="text-xs text-gray-500">
-                        {stats.averageSatisfaction.toFixed(0)}% satisfied
-                      </p>
-                    )}
+{stats && (
+                        <p className="text-xs text-gray-500">
+                          {Math.round(stats.averageSatisfaction)}% satisfied
+                        </p>
+                      )}
                   </div>
                 </div>
                 {/* Quick stats */}
