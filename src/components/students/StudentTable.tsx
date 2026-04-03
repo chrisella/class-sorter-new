@@ -3,6 +3,8 @@ import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
+  type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
 import { useStudentStore } from '../../stores';
@@ -16,11 +18,27 @@ export function StudentTable() {
   const { students, deleteStudent, getStudentById, updateStudent } = useStudentStore();
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
-        header: 'Name',
+        header: ({ column }) => {
+          const sortState = column.getIsSorted();
+          const indicator = sortState === 'asc' ? '↑' : sortState === 'desc' ? '↓' : '↕';
+
+          return (
+            <button
+              type="button"
+              onClick={column.getToggleSortingHandler()}
+              className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
+            >
+              <span>Name</span>
+              <span className={sortState ? 'text-blue-600' : 'text-gray-400'}>{indicator}</span>
+            </button>
+          );
+        },
+        enableSorting: true,
         cell: (info) => (
           <span className="font-medium text-gray-900">{info.getValue()}</span>
         ),
@@ -248,7 +266,10 @@ export function StudentTable() {
   const table = useReactTable({
     data: students,
     columns,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   return (

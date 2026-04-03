@@ -171,6 +171,7 @@ export function ResultsView() {
     activeClassSizeMode === 'strict'
       ? !insights.sizeCompliance.isExact
       : insights.sizeCompliance.maxDeviation > 1;
+  const resultsContentHeightClassName = 'xl:h-[calc(100vh-20rem)]';
   const hasTwoClassLayout = classes.length === 2;
   const hasMultiClassGrid = classes.length >= 3;
   const resultsOuterWrapperClassName = hasTwoClassLayout ? 'mx-auto w-full max-w-[1600px]' : 'w-full';
@@ -329,15 +330,11 @@ export function ResultsView() {
             students.filter((student) => student.assignedClassId === cls.id)
           );
           const stats = getClassStats(cls.id);
-          const targetSize = insights.sizeCompliance.classTargets[cls.id] ?? cls.targetSize;
-          const deviation = insights.sizeCompliance.classDeviations[cls.id] ?? 0;
-          const isClassOutOfCompliance =
-            activeClassSizeMode === 'strict' ? deviation > 0 : deviation > 1;
 
           return (
             <div key={cls.id} className={resultsCardWrapperClassName}>
               <div
-                className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                className={`bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col ${resultsContentHeightClassName}`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, cls.id)}
               >
@@ -353,17 +350,6 @@ export function ResultsView() {
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">
                         {classStudents.length} students
-                      </p>
-                      <p
-                        className={`text-xs ${
-                          isClassOutOfCompliance
-                            ? 'text-red-600'
-                            : deviation > 0
-                            ? 'text-amber-600'
-                            : 'text-gray-500'
-                        }`}
-                      >
-                        Target {targetSize}
                       </p>
                       {stats && (
                           <p className="text-xs text-gray-500">
@@ -386,7 +372,7 @@ export function ResultsView() {
                 </div>
 
                 {/* Student List */}
-                <div className="p-2 min-h-[200px] max-h-[400px] overflow-y-auto">
+                <div className="p-2 min-h-[200px] flex-1 overflow-y-auto">
                   {classStudents.length === 0 ? (
                     <p className="text-center text-sm text-gray-400 py-4">
                       Drop students here
