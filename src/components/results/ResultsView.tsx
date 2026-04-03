@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useClassStore, useStudentStore } from '../../stores';
 import { calculateStudentSatisfaction, getAssignmentInsights } from '../../utils/sortingAlgorithm';
@@ -13,17 +13,23 @@ interface FriendsTooltipProps {
 }
 
 function FriendsTooltip({ student, classId, getStudentById, anchorRef }: FriendsTooltipProps) {
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (anchorRef.current) {
       const rect = anchorRef.current.getBoundingClientRect();
       setPosition({
         top: rect.bottom + 8,
         left: rect.left + rect.width / 2,
       });
+    } else {
+      setPosition(null);
     }
   }, [anchorRef]);
+
+  if (position === null) {
+    return null;
+  }
 
   const content = student.preferredFriends.length === 0 ? (
     <div className="text-gray-400">No preferred friends</div>
@@ -165,6 +171,15 @@ export function ResultsView() {
     activeClassSizeMode === 'strict'
       ? !insights.sizeCompliance.isExact
       : insights.sizeCompliance.maxDeviation > 1;
+  const hasTwoClassLayout = classes.length === 2;
+  const hasMultiClassGrid = classes.length >= 3;
+  const resultsOuterWrapperClassName = hasTwoClassLayout ? 'mx-auto w-full max-w-[1600px]' : 'w-full';
+  const resultsGridClassName = hasTwoClassLayout
+    ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-8'
+    : hasMultiClassGrid
+    ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4'
+    : 'grid grid-cols-1 gap-4';
+  const resultsCardWrapperClassName = hasTwoClassLayout ? 'w-full max-w-[760px] mx-auto' : 'w-full';
 
   const calculateClassStatistics = (classId: string): ClassStatistics | undefined => {
     const classStudents = students.filter((s) => s.assignedClassId === classId);
@@ -305,7 +320,8 @@ export function ResultsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className={resultsOuterWrapperClassName}>
+        <div className={resultsGridClassName}>
         {classes.map((cls) => {
           const classStudents = students.filter((s) => s.assignedClassId === cls.id);
           const stats = getClassStats(cls.id);
@@ -315,81 +331,83 @@ export function ResultsView() {
             activeClassSizeMode === 'strict' ? deviation > 0 : deviation > 1;
 
           return (
-            <div
-              key={cls.id}
-              className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, cls.id)}
-            >
-              {/* Class Header */}
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">{cls.name}</h3>
-                    {cls.teacherName && (
-                      <p className="text-xs text-gray-500">{cls.teacherName}</p>
-                    )}
+            <div key={cls.id} className={resultsCardWrapperClassName}>
+              <div
+                className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, cls.id)}
+              >
+                {/* Class Header */}
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900">{cls.name}</h3>
+                      {cls.teacherName && (
+                        <p className="text-xs text-gray-500">{cls.teacherName}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">
+                        {classStudents.length} students
+                      </p>
+                      <p
+                        className={`text-xs ${
+                          isClassOutOfCompliance
+                            ? 'text-red-600'
+                            : deviation > 0
+                            ? 'text-amber-600'
+                            : 'text-gray-500'
+                        }`}
+                      >
+                        Target {targetSize}
+                      </p>
+                      {stats && (
+                          <p className="text-xs text-gray-500">
+                            {Math.round(stats.averageSatisfaction)}% satisfied
+                          </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">
-                      {classStudents.length} students
-                    </p>
-                    <p
-                      className={`text-xs ${
-                        isClassOutOfCompliance
-                          ? 'text-red-600'
-                          : deviation > 0
-                          ? 'text-amber-600'
-                          : 'text-gray-500'
-                      }`}
-                    >
-                      Target {targetSize}
-                    </p>
-                    {stats && (
-                        <p className="text-xs text-gray-500">
-                          {Math.round(stats.averageSatisfaction)}% satisfied
-                        </p>
-                    )}
+                  {/* Quick stats */}
+                  <div className="mt-2 flex gap-3 text-xs text-gray-500">
+                    <span>
+                      {classStudents.filter((s) => s.gender === 'male').length}M /{' '}
+                      {classStudents.filter((s) => s.gender === 'female').length}F
+                    </span>
+                    <span>{classStudents.filter((s) => s.isEAL).length} EAL</span>
+                    <span>{classStudents.filter((s) => s.ehcp).length} EHCP</span>
+                    <span>{classStudents.filter((s) => s.send).length} SEND</span>
+                    <span>{classStudents.filter((s) => s.ppg).length} PPG</span>
                   </div>
                 </div>
-                {/* Quick stats */}
-                <div className="mt-2 flex gap-3 text-xs text-gray-500">
-                  <span>
-                    {classStudents.filter((s) => s.gender === 'male').length}M /{' '}
-                    {classStudents.filter((s) => s.gender === 'female').length}F
-                  </span>
-                  <span>{classStudents.filter((s) => s.isEAL).length} EAL</span>
-                  <span>{classStudents.filter((s) => s.ehcp).length} EHCP</span>
-                  <span>{classStudents.filter((s) => s.send).length} SEND</span>
-                  <span>{classStudents.filter((s) => s.ppg).length} PPG</span>
-                </div>
-              </div>
 
-              {/* Student List */}
-              <div className="p-2 min-h-[200px] max-h-[400px] overflow-y-auto">
-                {classStudents.length === 0 ? (
-                  <p className="text-center text-sm text-gray-400 py-4">
-                    Drop students here
-                  </p>
-                ) : (
-                  <div className="space-y-1">
-                    {classStudents.map((student) => (
-                      <StudentCard
-                        key={student.id}
-                        student={student}
-                        classId={cls.id}
-                        students={students}
-                        getStudentById={getStudentById}
-                        getSatisfactionColor={getSatisfactionColor}
-                        onDragStart={handleDragStart}
-                      />
-                    ))}
-                  </div>
-                )}
+                {/* Student List */}
+                <div className="p-2 min-h-[200px] max-h-[400px] overflow-y-auto">
+                  {classStudents.length === 0 ? (
+                    <p className="text-center text-sm text-gray-400 py-4">
+                      Drop students here
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {classStudents.map((student) => (
+                        <StudentCard
+                          key={student.id}
+                          student={student}
+                          classId={cls.id}
+                          students={students}
+                          getStudentById={getStudentById}
+                          getSatisfactionColor={getSatisfactionColor}
+                          onDragStart={handleDragStart}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Legend */}
