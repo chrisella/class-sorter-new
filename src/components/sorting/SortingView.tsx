@@ -1,14 +1,30 @@
 import { useState } from 'react';
 import { useClassStore, useStudentStore, useUIStore } from '../../stores';
 import { runSorting } from '../../utils/sortingAlgorithm';
+import { buildTargetSizes } from '../../utils/classSizeUtils';
+import { ConfirmDialog } from '../shared/ConfirmDialog';
+import type { SortingResult } from '../../types';
 
 export function SortingView() {
   const { students, assignStudentToClass, clearAllAssignments } = useStudentStore();
   const { classes, sortingConfig, setSortingConfig, setLastSortingResult } = useClassStore();
   const { setView, isSorting, setIsSorting, sortingProgress, setSortingProgress } = useUIStore();
   const [error, setError] = useState('');
+  const [pendingStrictResult, setPendingStrictResult] = useState<SortingResult | null>(null);
 
   const canSort = students.length > 0 && classes.length > 0;
+  const targetSizes = buildTargetSizes(students.length, classes.length);
+  const targetSizesLabel = targetSizes.join(' / ');
+
+  const applySortingResult = (result: SortingResult) => {
+    clearAllAssignments();
+    Object.entries(result.assignments).forEach(([studentId, classId]) => {
+      assignStudentToClass(studentId, classId);
+    });
+    setLastSortingResult(result);
+    setPendingStrictResult(null);
+    setView('results');
+  };
 
   const handleSort = async () => {
     if (!canSort) return;
@@ -18,10 +34,6 @@ export function SortingView() {
     setSortingProgress(0);
 
     try {
-      // Clear existing assignments
-      clearAllAssignments();
-
-      // Run the sorting algorithm
       const result = await runSorting(
         students,
         classes,
@@ -29,13 +41,15 @@ export function SortingView() {
         (progress) => setSortingProgress(progress)
       );
 
-      // Apply assignments
-      Object.entries(result.assignments).forEach(([studentId, classId]) => {
-        assignStudentToClass(studentId, classId);
-      });
+      const blockingViolations = result.violations.filter(
+        (violation) => violation.type === 'blacklist' || violation.type === 'must_be_with'
+      );
 
-      setLastSortingResult(result);
-      setView('results');
+      if (sortingConfig.classSizeMode === 'strict' && blockingViolations.length > 0) {
+        setPendingStrictResult(result);
+      } else {
+        applySortingResult(result);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sorting failed');
     } finally {
@@ -67,6 +81,7 @@ export function SortingView() {
     typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   const priorityWeights = {
     friendPreference: safeWeight(sortingConfig.priorityWeights.friendPreference, 0.6),
+    classSizeBalance: safeWeight(sortingConfig.priorityWeights.classSizeBalance, 0.8),
     genderBalance: safeWeight(sortingConfig.priorityWeights.genderBalance, 0.2),
     ealBalance: safeWeight(sortingConfig.priorityWeights.ealBalance, 0.2),
     behaviorBalance: safeWeight(sortingConfig.priorityWeights.behaviorBalance, 0.2),
@@ -117,6 +132,14 @@ export function SortingView() {
         <h3 className="font-medium text-gray-900 mb-3">Constraints Summary</h3>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
+            <p className="text-gray-500">Derived target sizes</p>
+            <p className="text-lg font-medium">{targetSizesLabel || '-'}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Size enforcement</p>
+            <p className="text-lg font-medium capitalize">{sortingConfig.classSizeMode}</p>
+          </div>
+          <div>
             <p className="text-gray-500">Blacklist pairs (hard)</p>
             <p className="text-lg font-medium text-red-600">{totalBlacklists}</p>
           </div>
@@ -161,10 +184,72 @@ export function SortingView() {
         </div>
       </div>
 
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="font-medium text-gray-900 mb-3">Class Size Enforcement</h3>
+        <div className="space-y-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="radio"
+              name="classSizeMode"
+              checked={sortingConfig.classSizeMode !== 'flexible'}
+              onChange={() => setSortingConfig({ classSizeMode: 'strict' })}
+              className="mt-1"
+            />
+            <div>
+              <div className="text-sm font-medium text-gray-900">Strict</div>
+              <div className="text-sm text-gray-500">
+                Exact legal class sizes. May override blacklist and must-be-with constraints to hit
+                the required split.
+              </div>
+            </div>
+          </label>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="radio"
+              name="classSizeMode"
+              checked={sortingConfig.classSizeMode === 'flexible'}
+              onChange={() => setSortingConfig({ classSizeMode: 'flexible' })}
+              className="mt-1"
+            />
+            <div>
+              <div className="text-sm font-medium text-gray-900">Flexible</div>
+              <div className="text-sm text-gray-500">
+                Strongly prefers target sizes, but may trade size for a better overall balance.
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
       {/* Priority Weights */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <h3 className="font-medium text-gray-900 mb-3">Priority Weights</h3>
         <div className="space-y-4">
+          {sortingConfig.classSizeMode === 'flexible' && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-gray-700">Class Size Priority</label>
+                <span className="text-sm text-gray-500">
+                  {Math.round(priorityWeights.classSizeBalance * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={priorityWeights.classSizeBalance * 100}
+                onChange={(e) =>
+                  setSortingConfig({
+                    priorityWeights: {
+                      ...priorityWeights,
+                      classSizeBalance: parseInt(e.target.value, 10) / 100,
+                    },
+                  })
+                }
+                className="w-full"
+              />
+            </div>
+          )}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-sm text-gray-700">Friend Preferences</label>
@@ -404,6 +489,22 @@ export function SortingView() {
         <p className="text-sm text-amber-600">
           Please add students and configure classes before sorting.
         </p>
+      )}
+
+      {pendingStrictResult && (
+        <ConfirmDialog
+          title="Strict Size Overrides Required"
+          message={`Exact target sizes (${targetSizesLabel}) were achieved, but this result introduces ${
+            pendingStrictResult.violations.filter((violation) => violation.type === 'blacklist').length
+          } blacklist violation(s) and ${
+            pendingStrictResult.violations.filter((violation) => violation.type === 'must_be_with').length
+          } must-be-with violation(s). Apply this strict result?`}
+          confirmLabel="Apply Result"
+          cancelLabel="Cancel"
+          variant="warning"
+          onConfirm={() => applySortingResult(pendingStrictResult)}
+          onCancel={() => setPendingStrictResult(null)}
+        />
       )}
     </div>
   );

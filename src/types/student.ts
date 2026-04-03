@@ -40,4 +40,5 @@ export interface SatisfactionScore {
   maxPossibleFriends: number;        // Total preferred friends specified
   friendsMatched: string[];          // IDs of friends in same class
   hasBlacklistViolation: boolean;
+  hasMustBeWithViolation: boolean;
 }

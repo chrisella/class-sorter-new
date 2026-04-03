@@ -1,36 +1,34 @@
 import { useMemo } from 'react';
 import { useClassStore, useStudentStore } from '../../stores';
-import { calculateStudentSatisfaction } from '../../utils/sortingAlgorithm';
+import { calculateStudentSatisfaction, getAssignmentInsights } from '../../utils/sortingAlgorithm';
 
 export function StatisticsView() {
-  const { classes, lastSortingResult } = useClassStore();
+  const { classes, lastSortingResult, sortingConfig } = useClassStore();
   const { students } = useStudentStore();
 
-  const assignedStudents = students.filter((s) => s.assignedClassId !== null);
+  const assignedStudents = students.filter((student) => student.assignedClassId !== null);
+  const activeClassSizeMode = lastSortingResult?.classSizeMode ?? sortingConfig.classSizeMode;
 
   const statistics = useMemo(() => {
     if (assignedStudents.length === 0) return null;
 
-    // Calculate satisfaction for all students
-    const satisfactionScores = assignedStudents.map((student) => {
-      return calculateStudentSatisfaction(student, student.assignedClassId!, students);
-    });
-
+    const insights = getAssignmentInsights(students, classes, activeClassSizeMode, 'manual_edit');
+    const satisfactionScores = assignedStudents.map((student) =>
+      calculateStudentSatisfaction(student, student.assignedClassId!, students)
+    );
     const avgSatisfaction =
-      satisfactionScores.reduce((sum, s) => sum + s.score, 0) / satisfactionScores.length;
+      satisfactionScores.reduce((sum, score) => sum + score.score, 0) / satisfactionScores.length;
 
     const satisfactionDistribution = {
-      excellent: satisfactionScores.filter((s) => s.score >= 80).length,
-      good: satisfactionScores.filter((s) => s.score >= 40 && s.score < 80).length,
-      poor: satisfactionScores.filter((s) => s.score < 40).length,
-      violations: satisfactionScores.filter((s) => s.hasBlacklistViolation).length,
+      excellent: satisfactionScores.filter((score) => score.score >= 80).length,
+      good: satisfactionScores.filter((score) => score.score >= 40 && score.score < 80).length,
+      poor: satisfactionScores.filter((score) => score.score < 40).length,
     };
 
-    // Per-class statistics
     const classStats = classes.map((cls) => {
-      const classStudents = students.filter((s) => s.assignedClassId === cls.id);
-      const classSatisfaction = classStudents.map((s) =>
-        calculateStudentSatisfaction(s, cls.id, students)
+      const classStudents = students.filter((student) => student.assignedClassId === cls.id);
+      const classSatisfaction = classStudents.map((student) =>
+        calculateStudentSatisfaction(student, cls.id, students)
       );
 
       return {
@@ -38,25 +36,18 @@ export function StatisticsView() {
         name: cls.name,
         teacherName: cls.teacherName,
         total: classStudents.length,
-        male: classStudents.filter((s) => s.gender === 'male').length,
-        female: classStudents.filter((s) => s.gender === 'female').length,
-        eal: classStudents.filter((s) => s.isEAL).length,
-        behaviorAvg:
-          classStudents.length > 0
-            ? classStudents.reduce((sum, s) => sum + s.behavior, 0) / classStudents.length
-            : 0,
-        abilityAvg:
-          classStudents.length > 0
-            ? classStudents.reduce((sum, s) => sum + s.ability, 0) / classStudents.length
-            : 0,
-        ehcp: classStudents.filter((s) => s.ehcp).length,
-        send: classStudents.filter((s) => s.send).length,
-        ppg: classStudents.filter((s) => s.ppg).length,
+        target: insights.sizeCompliance.classTargets[cls.id] ?? cls.targetSize,
+        deviation: insights.sizeCompliance.classDeviations[cls.id] ?? 0,
+        male: classStudents.filter((student) => student.gender === 'male').length,
+        female: classStudents.filter((student) => student.gender === 'female').length,
+        eal: classStudents.filter((student) => student.isEAL).length,
+        ehcp: classStudents.filter((student) => student.ehcp).length,
+        send: classStudents.filter((student) => student.send).length,
+        ppg: classStudents.filter((student) => student.ppg).length,
         avgSatisfaction:
           classSatisfaction.length > 0
-            ? classSatisfaction.reduce((sum, s) => sum + s.score, 0) / classSatisfaction.length
+            ? classSatisfaction.reduce((sum, score) => sum + score.score, 0) / classSatisfaction.length
             : 100,
-        violations: classSatisfaction.filter((s) => s.hasBlacklistViolation).length,
       };
     });
 
@@ -71,7 +62,7 @@ export function StatisticsView() {
       pairMap.add(key);
       totalMustWithPairs++;
 
-      const partner = students.find((s) => s.id === partnerId);
+      const partner = students.find((candidate) => candidate.id === partnerId);
       if (
         partner &&
         student.assignedClassId &&
@@ -83,29 +74,22 @@ export function StatisticsView() {
     }
 
     return {
+      insights,
       avgSatisfaction,
       satisfactionDistribution,
       classStats,
       totalStudents: assignedStudents.length,
-      totalMale: assignedStudents.filter((s) => s.gender === 'male').length,
-      totalFemale: assignedStudents.filter((s) => s.gender === 'female').length,
-      totalEAL: assignedStudents.filter((s) => s.isEAL).length,
-      totalEHCP: assignedStudents.filter((s) => s.ehcp).length,
-      totalSEND: assignedStudents.filter((s) => s.send).length,
-      totalPPG: assignedStudents.filter((s) => s.ppg).length,
-      overallBehavior:
-        assignedStudents.length > 0
-          ? assignedStudents.reduce((sum, s) => sum + s.behavior, 0) / assignedStudents.length
-          : 0,
-      overallAbility:
-        assignedStudents.length > 0
-          ? assignedStudents.reduce((sum, s) => sum + s.ability, 0) / assignedStudents.length
-          : 0,
+      totalMale: assignedStudents.filter((student) => student.gender === 'male').length,
+      totalFemale: assignedStudents.filter((student) => student.gender === 'female').length,
+      totalEAL: assignedStudents.filter((student) => student.isEAL).length,
+      totalEHCP: assignedStudents.filter((student) => student.ehcp).length,
+      totalSEND: assignedStudents.filter((student) => student.send).length,
+      totalPPG: assignedStudents.filter((student) => student.ppg).length,
       totalMustWithPairs,
       satisfiedMustWithPairs,
       brokenMustWithPairs: totalMustWithPairs - satisfiedMustWithPairs,
     };
-  }, [assignedStudents, classes, students]);
+  }, [assignedStudents, students, classes, activeClassSizeMode]);
 
   if (!statistics) {
     return (
@@ -132,6 +116,7 @@ export function StatisticsView() {
   }
 
   const {
+    insights,
     avgSatisfaction,
     satisfactionDistribution,
     classStats,
@@ -142,8 +127,6 @@ export function StatisticsView() {
     totalEHCP,
     totalSEND,
     totalPPG,
-    overallBehavior,
-    overallAbility,
     totalMustWithPairs,
     satisfiedMustWithPairs,
     brokenMustWithPairs,
@@ -154,11 +137,10 @@ export function StatisticsView() {
       <div>
         <h2 className="text-lg font-medium text-gray-900">Statistics Overview</h2>
         <p className="text-sm text-gray-500">
-          Summary of class assignments and satisfaction metrics.
+          Summary of class assignments, violations, and class-size compliance.
         </p>
       </div>
 
-      {/* Overall Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-sm text-gray-500">Overall Satisfaction</p>
@@ -169,38 +151,80 @@ export function StatisticsView() {
           <p className="text-2xl font-bold text-gray-900">{totalStudents}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">Classes</p>
-          <p className="text-2xl font-bold text-gray-900">{classes.length}</p>
+          <p className="text-sm text-gray-500">Target Split</p>
+          <p className="text-2xl font-bold text-gray-900">{insights.sizeCompliance.targetSizes.join('/')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">Violations</p>
-          <p className={`text-2xl font-bold ${satisfactionDistribution.violations > 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {satisfactionDistribution.violations}
+          <p className="text-sm text-gray-500">Size Status</p>
+          <p
+            className={`text-2xl font-bold ${
+              insights.sizeCompliance.isExact ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            {insights.sizeCompliance.isExact ? 'Exact' : `±${insights.sizeCompliance.maxDeviation}`}
           </p>
         </div>
       </div>
 
-      {/* Additional Student Factors */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">Behavior Avg</p>
-          <p className="text-2xl font-bold text-gray-900">{overallBehavior.toFixed(2)}</p>
+          <p className="text-sm text-gray-500">Blacklist Violations</p>
+          <p
+            className={`text-2xl font-bold ${
+              insights.blacklistViolations.length > 0 ? 'text-red-600' : 'text-green-600'
+            }`}
+          >
+            {insights.blacklistViolations.length}
+          </p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">Ability Avg</p>
-          <p className="text-2xl font-bold text-gray-900">{overallAbility.toFixed(2)}</p>
+          <p className="text-sm text-gray-500">Must-With Violations</p>
+          <p
+            className={`text-2xl font-bold ${
+              insights.mustBeWithViolations.length > 0 ? 'text-red-600' : 'text-green-600'
+            }`}
+          >
+            {insights.mustBeWithViolations.length}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Size Warning Classes</p>
+          <p
+            className={`text-2xl font-bold ${
+              insights.classSizeViolations.length > 0 ? 'text-amber-600' : 'text-green-600'
+            }`}
+          >
+            {insights.classSizeViolations.length}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Classes</p>
+          <p className="text-2xl font-bold text-gray-900">{classes.length}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Male</p>
+          <p className="text-2xl font-bold text-gray-900">{totalMale}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">Female</p>
+          <p className="text-2xl font-bold text-gray-900">{totalFemale}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-sm text-gray-500">EAL</p>
+          <p className="text-2xl font-bold text-gray-900">{totalEAL}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-sm text-gray-500">EHCP</p>
           <p className="text-2xl font-bold text-gray-900">{totalEHCP}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">SEND</p>
-          <p className="text-2xl font-bold text-gray-900">{totalSEND}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">PPG</p>
-          <p className="text-2xl font-bold text-gray-900">{totalPPG}</p>
+          <p className="text-sm text-gray-500">SEND / PPG</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {totalSEND} / {totalPPG}
+          </p>
         </div>
       </div>
 
@@ -219,277 +243,121 @@ export function StatisticsView() {
         </div>
       </div>
 
-      {/* Satisfaction Distribution */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <h3 className="font-medium text-gray-900 mb-4">Satisfaction Distribution</h3>
         <div className="space-y-3">
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-green-700">Excellent (80-100%)</span>
-              <span className="text-gray-600">{satisfactionDistribution.excellent} students</span>
-            </div>
-            <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green-500"
-                style={{
-                  width: `${(satisfactionDistribution.excellent / totalStudents) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-yellow-700">Good (40-79%)</span>
-              <span className="text-gray-600">{satisfactionDistribution.good} students</span>
-            </div>
-            <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-yellow-500"
-                style={{
-                  width: `${(satisfactionDistribution.good / totalStudents) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-orange-700">Needs Attention (0-39%)</span>
-              <span className="text-gray-600">{satisfactionDistribution.poor} students</span>
-            </div>
-            <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-orange-500"
-                style={{
-                  width: `${(satisfactionDistribution.poor / totalStudents) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
+          <DistributionRow
+            label="Excellent (80-100%)"
+            color="bg-green-500"
+            textColor="text-green-700"
+            count={satisfactionDistribution.excellent}
+            total={totalStudents}
+          />
+          <DistributionRow
+            label="Good (40-79%)"
+            color="bg-yellow-500"
+            textColor="text-yellow-700"
+            count={satisfactionDistribution.good}
+            total={totalStudents}
+          />
+          <DistributionRow
+            label="Needs Attention (0-39%)"
+            color="bg-orange-500"
+            textColor="text-orange-700"
+            count={satisfactionDistribution.poor}
+            total={totalStudents}
+          />
         </div>
       </div>
 
-      {/* Additional Factors by Class */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-medium text-gray-900 mb-4">Additional Factors by Class</h3>
+        <h3 className="font-medium text-gray-900 mb-4">Class Compliance</h3>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                  Class
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  Behavior Avg
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  Ability Avg
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  EHCP
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  SEND
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  PPG
-                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actual</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Target</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Deviation</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">EAL</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">EHCP</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">SEND</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">PPG</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Satisfaction</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {classStats.map((cls) => (
                 <tr key={cls.id}>
-                  <td className="px-4 py-2 text-sm font-medium text-gray-900">{cls.name}</td>
-                  <td className="px-4 py-2 text-sm text-right text-gray-600">
-                    {cls.total > 0 ? cls.behaviorAvg.toFixed(2) : '-'}
+                  <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                    {cls.name}
+                    {cls.teacherName && <span className="ml-1 text-gray-400">({cls.teacherName})</span>}
                   </td>
-                  <td className="px-4 py-2 text-sm text-right text-gray-600">
-                    {cls.total > 0 ? cls.abilityAvg.toFixed(2) : '-'}
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.total}</td>
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.target}</td>
+                  <td
+                    className={`px-4 py-2 text-sm text-right ${
+                      cls.deviation === 0
+                        ? 'text-green-600'
+                        : activeClassSizeMode === 'strict' || cls.deviation > 1
+                        ? 'text-red-600'
+                        : 'text-amber-600'
+                    }`}
+                  >
+                    {cls.deviation}
                   </td>
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.eal}</td>
                   <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.ehcp}</td>
                   <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.send}</td>
                   <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.ppg}</td>
-                </tr>
-              ))}
-              <tr className="bg-gray-50 font-medium">
-                <td className="px-4 py-2 text-sm text-gray-900">Total</td>
-                <td className="px-4 py-2 text-sm text-right text-gray-900">
-                  {overallBehavior.toFixed(2)}
-                </td>
-                <td className="px-4 py-2 text-sm text-right text-gray-900">
-                  {overallAbility.toFixed(2)}
-                </td>
-                <td className="px-4 py-2 text-sm text-right text-gray-900">{totalEHCP}</td>
-                <td className="px-4 py-2 text-sm text-right text-gray-900">{totalSEND}</td>
-                <td className="px-4 py-2 text-sm text-right text-gray-900">{totalPPG}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Gender Distribution */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-medium text-gray-900 mb-4">Gender Distribution by Class</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                  Class
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  Total
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  Male
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  Female
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  M/F Ratio
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                  Distribution
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {classStats.map((cls) => {
-                const malePercent = cls.total > 0 ? (cls.male / cls.total) * 100 : 50;
-                return (
-                  <tr key={cls.id}>
-                    <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                      {cls.name}
-                      {cls.teacherName && (
-                        <span className="text-gray-400 ml-1">({cls.teacherName})</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.total}</td>
-                    <td className="px-4 py-2 text-sm text-right text-blue-600">{cls.male}</td>
-                    <td className="px-4 py-2 text-sm text-right text-pink-600">{cls.female}</td>
-                    <td className="px-4 py-2 text-sm text-right text-gray-600">
-                      {cls.total > 0 ? `${malePercent.toFixed(0)}/${(100 - malePercent).toFixed(0)}` : '-'}
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="h-4 w-32 bg-gray-100 rounded-full overflow-hidden flex">
-                        <div
-                          className="h-full bg-blue-400"
-                          style={{ width: `${malePercent}%` }}
-                        />
-                        <div
-                          className="h-full bg-pink-400"
-                          style={{ width: `${100 - malePercent}%` }}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {/* Total row */}
-              <tr className="bg-gray-50 font-medium">
-                <td className="px-4 py-2 text-sm text-gray-900">Total</td>
-                <td className="px-4 py-2 text-sm text-right text-gray-900">{totalStudents}</td>
-                <td className="px-4 py-2 text-sm text-right text-blue-600">{totalMale}</td>
-                <td className="px-4 py-2 text-sm text-right text-pink-600">{totalFemale}</td>
-                <td className="px-4 py-2 text-sm text-right text-gray-600">
-                  {totalStudents > 0
-                    ? `${((totalMale / totalStudents) * 100).toFixed(0)}/${((totalFemale / totalStudents) * 100).toFixed(0)}`
-                    : '-'}
-                </td>
-                <td className="px-4 py-2">
-                  <div className="h-4 w-32 bg-gray-100 rounded-full overflow-hidden flex">
-                    <div
-                      className="h-full bg-blue-400"
-                      style={{ width: `${totalStudents > 0 ? (totalMale / totalStudents) * 100 : 50}%` }}
-                    />
-                    <div
-                      className="h-full bg-pink-400"
-                      style={{ width: `${totalStudents > 0 ? (totalFemale / totalStudents) * 100 : 50}%` }}
-                    />
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* EAL Distribution */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-medium text-gray-900 mb-4">EAL Distribution by Class</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                  Class
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  Total
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  EAL
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  EAL %
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                  Satisfaction
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {classStats.map((cls) => (
-                <tr key={cls.id}>
-                  <td className="px-4 py-2 text-sm font-medium text-gray-900">{cls.name}</td>
-                  <td className="px-4 py-2 text-sm text-right text-gray-600">{cls.total}</td>
-                  <td className="px-4 py-2 text-sm text-right text-yellow-600">{cls.eal}</td>
                   <td className="px-4 py-2 text-sm text-right text-gray-600">
-                    {cls.total > 0 ? `${((cls.eal / cls.total) * 100).toFixed(1)}%` : '-'}
-                  </td>
-                  <td className="px-4 py-2 text-sm text-right">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        cls.avgSatisfaction >= 80
-                          ? 'bg-green-100 text-green-700'
-                          : cls.avgSatisfaction >= 40
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-orange-100 text-orange-700'
-                      }`}
-                    >
-                      {cls.avgSatisfaction.toFixed(1)}%
-                    </span>
+                    {cls.avgSatisfaction.toFixed(1)}%
                   </td>
                 </tr>
               ))}
-              {/* Total row */}
-              <tr className="bg-gray-50 font-medium">
-                <td className="px-4 py-2 text-sm text-gray-900">Total</td>
-                <td className="px-4 py-2 text-sm text-right text-gray-900">{totalStudents}</td>
-                <td className="px-4 py-2 text-sm text-right text-yellow-600">{totalEAL}</td>
-                <td className="px-4 py-2 text-sm text-right text-gray-600">
-                  {totalStudents > 0 ? `${((totalEAL / totalStudents) * 100).toFixed(1)}%` : '-'}
-                </td>
-                <td className="px-4 py-2 text-sm text-right">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                    {avgSatisfaction.toFixed(1)}%
-                  </span>
-                </td>
-              </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Algorithm Info */}
       {lastSortingResult && (
         <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
-          <p>
-            Sorting completed in {lastSortingResult.iterationsUsed.toLocaleString()} iterations.
+          <p>Sorting completed in {lastSortingResult.iterationsUsed.toLocaleString()} iterations.</p>
+          <p className="mt-1">
+            Auto-sort mode: <span className="capitalize">{lastSortingResult.classSizeMode}</span>
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function DistributionRow({
+  label,
+  color,
+  textColor,
+  count,
+  total,
+}: {
+  label: string;
+  color: string;
+  textColor: string;
+  count: number;
+  total: number;
+}) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span className={textColor}>{label}</span>
+        <span className="text-gray-600">{count} students</span>
+      </div>
+      <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${color}`}
+          style={{ width: `${total > 0 ? (count / total) * 100 : 0}%` }}
+        />
+      </div>
     </div>
   );
 }

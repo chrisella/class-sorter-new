@@ -2,17 +2,7 @@ import { useEffect, useState } from 'react';
 import { useClassStore, useStudentStore } from '../../stores';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import type { Class } from '../../types';
-
-function buildTargetSizes(totalStudents: number, count: number): number[] {
-  if (count <= 0) return [];
-
-  const baseSize = Math.floor(totalStudents / count);
-  const remainder = totalStudents % count;
-
-  return Array.from({ length: count }, (_, index) =>
-    baseSize + (index >= count - remainder ? 1 : 0)
-  );
-}
+import { buildTargetSizes } from '../../utils/classSizeUtils';
 
 export function ClassesView() {
   const { classes, addClass, updateClass, deleteClass, deleteAllClasses, generateDefaultClasses } =

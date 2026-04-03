@@ -2,17 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import type { Class, SortingConfiguration, SortingResult } from '../types';
-
-function buildTargetSizes(totalStudents: number, count: number): number[] {
-  if (count <= 0) return [];
-
-  const baseSize = Math.floor(totalStudents / count);
-  const remainder = totalStudents % count;
-
-  return Array.from({ length: count }, (_, index) =>
-    baseSize + (index >= count - remainder ? 1 : 0)
-  );
-}
+import { buildTargetSizes } from '../utils/classSizeUtils';
 
 interface ClassState {
   classes: Class[];
@@ -33,8 +23,10 @@ interface ClassState {
 
 const defaultSortingConfig: SortingConfiguration = {
   numberOfClasses: 3,
+  classSizeMode: 'strict',
   priorityWeights: {
     friendPreference: 0.6,
+    classSizeBalance: 0.8,
     genderBalance: 0.2,
     ealBalance: 0.2,
     behaviorBalance: 0.2,

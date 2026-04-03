@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useClassStore, useStudentStore } from '../../stores';
-import { calculateStudentSatisfaction } from '../../utils/sortingAlgorithm';
+import { calculateStudentSatisfaction, getAssignmentInsights } from '../../utils/sortingAlgorithm';
 import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
-import { AlertDialog } from '../shared/ConfirmDialog';
 import type { Student, ClassStatistics } from '../../types';
 
 interface FriendsTooltipProps {
@@ -89,7 +88,7 @@ function StudentCard({
   const satisfaction = calculateStudentSatisfaction(student, classId, students);
   const colorClass = getSatisfactionColor(
     satisfaction.score,
-    satisfaction.hasBlacklistViolation
+    satisfaction.hasBlacklistViolation || satisfaction.hasMustBeWithViolation
   );
 
   return (
@@ -127,6 +126,10 @@ function StudentCard({
           <span className="text-red-700 font-medium">
             Blacklist violation!
           </span>
+        ) : satisfaction.hasMustBeWithViolation ? (
+          <span className="text-red-700 font-medium">
+            Must-with broken!
+          </span>
         ) : satisfaction.maxPossibleFriends > 0 ? (
           <span>
             {satisfaction.preferredFriendsInClass}/
@@ -138,7 +141,11 @@ function StudentCard({
         )}
       </div>
       {student.mustBeWithStudentId && (
-        <div className="mt-1 text-[11px] opacity-80">
+        <div
+          className={`mt-1 text-[11px] opacity-80 ${
+            satisfaction.hasMustBeWithViolation ? 'text-red-700 font-medium' : ''
+          }`}
+        >
           Must with: {getStudentById(student.mustBeWithStudentId)?.name || 'Unknown'}
         </div>
       )}
@@ -147,13 +154,17 @@ function StudentCard({
 }
 
 export function ResultsView() {
-  const { classes } = useClassStore();
+  const { classes, lastSortingResult, sortingConfig } = useClassStore();
   const { students, assignStudentToClass, getStudentById } = useStudentStore();
   const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
-  const [showViolationAlert, setShowViolationAlert] = useState(false);
-  const [pairWarningMessage, setPairWarningMessage] = useState<string | null>(null);
 
   const assignedStudents = students.filter((s) => s.assignedClassId !== null);
+  const activeClassSizeMode = lastSortingResult?.classSizeMode ?? sortingConfig.classSizeMode;
+  const insights = getAssignmentInsights(students, classes, activeClassSizeMode, 'manual_edit');
+  const currentSizeWarning =
+    activeClassSizeMode === 'strict'
+      ? !insights.sizeCompliance.isExact
+      : insights.sizeCompliance.maxDeviation > 1;
 
   const calculateClassStatistics = (classId: string): ClassStatistics | undefined => {
     const classStudents = students.filter((s) => s.assignedClassId === classId);
@@ -225,27 +236,7 @@ export function ResultsView() {
   const handleDrop = (e: React.DragEvent, targetClassId: string) => {
     e.preventDefault();
     if (draggedStudent && draggedStudent.assignedClassId !== targetClassId) {
-      // Check for blacklist violations
-      const targetClassStudents = students.filter((s) => s.assignedClassId === targetClassId);
-      const hasViolation =
-        draggedStudent.blacklistedStudents.some((bId) =>
-          targetClassStudents.some((s) => s.id === bId)
-        ) ||
-        targetClassStudents.some((s) => s.blacklistedStudents.includes(draggedStudent.id));
-
-      if (hasViolation) {
-        setShowViolationAlert(true);
-      } else {
-        const partner = draggedStudent.mustBeWithStudentId
-          ? getStudentById(draggedStudent.mustBeWithStudentId)
-          : undefined;
-        assignStudentToClass(draggedStudent.id, targetClassId);
-        if (partner && partner.assignedClassId !== targetClassId) {
-          setPairWarningMessage(
-            `This move breaks a must-be-with relationship between ${draggedStudent.name} and ${partner.name}.`
-          );
-        }
-      }
+      assignStudentToClass(draggedStudent.id, targetClassId);
     }
     setDraggedStudent(null);
   };
@@ -259,8 +250,40 @@ export function ResultsView() {
 
   return (
     <div className="space-y-4">
+      {lastSortingResult?.strictOverrideApplied && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Strict sizing required overrides. The auto-sorted result includes{' '}
+          {lastSortingResult.violations.filter((violation) => violation.type === 'blacklist').length}{' '}
+          blacklist violation(s) and{' '}
+          {lastSortingResult.violations.filter((violation) => violation.type === 'must_be_with').length}{' '}
+          must-be-with violation(s).
+        </div>
+      )}
+
+      {currentSizeWarning && (
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+          Current class sizes are out of compliance. Targets are{' '}
+          {insights.sizeCompliance.targetSizes.join(' / ')}, current sizes are{' '}
+          {classes.map((cls) => insights.sizeCompliance.classActualSizes[cls.id] ?? 0).join(' / ')}.
+        </div>
+      )}
+
+      {!currentSizeWarning && activeClassSizeMode === 'flexible' && insights.sizeCompliance.maxDeviation > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Current class sizes are close to target but not exact. Maximum deviation is{' '}
+          {insights.sizeCompliance.maxDeviation}.
+        </div>
+      )}
+
+      {(insights.blacklistViolations.length > 0 || insights.mustBeWithViolations.length > 0) && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Current layout has {insights.blacklistViolations.length} blacklist violation(s) and{' '}
+          {insights.mustBeWithViolations.length} must-be-with violation(s).
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
-<div>
+        <div>
           <h2 className="text-lg font-medium text-gray-900">Class Assignments</h2>
           <p className="text-sm text-gray-500">
             Drag and drop students between classes to make adjustments.
@@ -282,10 +305,14 @@ export function ResultsView() {
         </div>
       </div>
 
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {classes.map((cls) => {
           const classStudents = students.filter((s) => s.assignedClassId === cls.id);
           const stats = getClassStats(cls.id);
+          const targetSize = insights.sizeCompliance.classTargets[cls.id] ?? cls.targetSize;
+          const deviation = insights.sizeCompliance.classDeviations[cls.id] ?? 0;
+          const isClassOutOfCompliance =
+            activeClassSizeMode === 'strict' ? deviation > 0 : deviation > 1;
 
           return (
             <div
@@ -307,11 +334,22 @@ export function ResultsView() {
                     <p className="text-sm font-medium text-gray-900">
                       {classStudents.length} students
                     </p>
-{stats && (
+                    <p
+                      className={`text-xs ${
+                        isClassOutOfCompliance
+                          ? 'text-red-600'
+                          : deviation > 0
+                          ? 'text-amber-600'
+                          : 'text-gray-500'
+                      }`}
+                    >
+                      Target {targetSize}
+                    </p>
+                    {stats && (
                         <p className="text-xs text-gray-500">
                           {Math.round(stats.averageSatisfaction)}% satisfied
                         </p>
-                      )}
+                    )}
                   </div>
                 </div>
                 {/* Quick stats */}
@@ -362,23 +400,6 @@ export function ResultsView() {
         <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">0-39%</span>
         <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Violation</span>
       </div>
-
-      {showViolationAlert && (
-        <AlertDialog
-          title="Cannot Move Student"
-          message="This move would create a blacklist violation. Students who are blacklisted from each other cannot be placed in the same class."
-          onClose={() => setShowViolationAlert(false)}
-        />
-      )}
-
-      {pairWarningMessage && (
-        <AlertDialog
-          title="Must-Be-With Warning"
-          message={pairWarningMessage}
-          variant="warning"
-          onClose={() => setPairWarningMessage(null)}
-        />
-      )}
     </div>
   );
 }
