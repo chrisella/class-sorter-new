@@ -1,7 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useClassStore, useStudentStore } from '../../stores';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import type { Class } from '../../types';
+
+function buildTargetSizes(totalStudents: number, count: number): number[] {
+  if (count <= 0) return [];
+
+  const baseSize = Math.floor(totalStudents / count);
+  const remainder = totalStudents % count;
+
+  return Array.from({ length: count }, (_, index) =>
+    baseSize + (index >= count - remainder ? 1 : 0)
+  );
+}
 
 export function ClassesView() {
   const { classes, addClass, updateClass, deleteClass, deleteAllClasses, generateDefaultClasses } =
@@ -15,12 +26,30 @@ export function ClassesView() {
   const [deletingClass, setDeletingClass] = useState<Class | null>(null);
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [generateCount, setGenerateCount] = useState('3');
+  const targetSizes = buildTargetSizes(students.length, classes.length);
+
+  useEffect(() => {
+    classes.forEach((cls, index) => {
+      const targetSize = targetSizes[index];
+      if (targetSize !== undefined && cls.targetSize !== targetSize) {
+        updateClass(cls.id, { targetSize });
+      }
+    });
+  }, [classes, targetSizes, updateClass]);
 
   const handleAddClass = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClassName.trim()) return;
 
-    const targetSize = Math.ceil(students.length / (classes.length + 1));
+    const nextTargetSizes = buildTargetSizes(students.length, classes.length + 1);
+    classes.forEach((cls, index) => {
+      const targetSize = nextTargetSizes[index];
+      if (targetSize !== undefined && cls.targetSize !== targetSize) {
+        updateClass(cls.id, { targetSize });
+      }
+    });
+
+    const targetSize = nextTargetSizes[nextTargetSizes.length - 1] ?? students.length;
     addClass(newClassName.trim(), targetSize, newTeacherName.trim() || undefined);
     setNewClassName('');
     setNewTeacherName('');
@@ -125,7 +154,7 @@ export function ClassesView() {
       {/* Classes Grid */}
       {classes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {classes.map((cls) => (
+          {classes.map((cls, index) => (
             <div
               key={cls.id}
               className="bg-white rounded-lg border border-gray-200 p-4"
@@ -195,7 +224,7 @@ export function ClassesView() {
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <p className="text-sm text-gray-500">
-                      Target size: {cls.targetSize} students
+                      Target size: {targetSizes[index] ?? cls.targetSize} students
                     </p>
                   </div>
                 </>

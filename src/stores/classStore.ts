@@ -3,6 +3,17 @@ import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import type { Class, SortingConfiguration, SortingResult } from '../types';
 
+function buildTargetSizes(totalStudents: number, count: number): number[] {
+  if (count <= 0) return [];
+
+  const baseSize = Math.floor(totalStudents / count);
+  const remainder = totalStudents % count;
+
+  return Array.from({ length: count }, (_, index) =>
+    baseSize + (index >= count - remainder ? 1 : 0)
+  );
+}
+
 interface ClassState {
   classes: Class[];
   sortingConfig: SortingConfiguration;
@@ -90,7 +101,7 @@ export const useClassStore = create<ClassState>()(
       },
 
       generateDefaultClasses: (count, totalStudents) => {
-        const targetSize = Math.ceil(totalStudents / count);
+        const targetSizes = buildTargetSizes(totalStudents, count);
         const newClasses: Class[] = [];
         const now = new Date();
 
@@ -98,7 +109,7 @@ export const useClassStore = create<ClassState>()(
           newClasses.push({
             id: uuidv4(),
             name: `Class ${String.fromCharCode(65 + i)}`, // Class A, B, C, etc.
-            targetSize,
+            targetSize: targetSizes[i] ?? 0,
             createdAt: now,
           });
         }
