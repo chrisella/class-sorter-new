@@ -10,11 +10,12 @@ export function SortingView() {
   const { classes, sortingConfig, setSortingConfig, setLastSortingResult } = useClassStore();
   const { setView, isSorting, setIsSorting, sortingProgress, setSortingProgress } = useUIStore();
   const [error, setError] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [pendingStrictResult, setPendingStrictResult] = useState<SortingResult | null>(null);
 
   const canSort = students.length > 0 && classes.length > 0;
   const targetSizes = buildTargetSizes(students.length, classes.length);
-  const targetSizesLabel = targetSizes.join(' / ');
+  const targetSizesLabel = targetSizes.length > 0 ? targetSizes.join(' / ') : '-';
 
   const applySortingResult = (result: SortingResult) => {
     clearAllAssignments();
@@ -51,18 +52,21 @@ export function SortingView() {
         applySortingResult(result);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sorting failed');
+      setError(err instanceof Error ? err.message : 'Creating class groups failed');
     } finally {
       setIsSorting(false);
       setSortingProgress(0);
     }
   };
 
-  const totalBlacklists = students.reduce((sum, s) => sum + s.blacklistedStudents.length, 0);
-  const totalPreferences = students.reduce((sum, s) => sum + s.preferredFriends.length, 0);
-  const totalEHCP = students.filter((s) => s.ehcp).length;
-  const totalSEND = students.filter((s) => s.send).length;
-  const totalPPG = students.filter((s) => s.ppg).length;
+  const totalBlacklists = students.reduce((sum, student) => sum + student.blacklistedStudents.length, 0);
+  const totalPreferences = students.reduce((sum, student) => sum + student.preferredFriends.length, 0);
+  const totalEHCP = students.filter((student) => student.ehcp).length;
+  const totalSEND = students.filter((student) => student.send).length;
+  const totalPPG = students.filter((student) => student.ppg).length;
+  const totalMale = students.filter((student) => student.gender === 'male').length;
+  const totalFemale = students.filter((student) => student.gender === 'female').length;
+  const totalEAL = students.filter((student) => student.isEAL).length;
   const totalMustBeWithPairs = (() => {
     const seen = new Set<string>();
     let count = 0;
@@ -77,6 +81,7 @@ export function SortingView() {
     }
     return count;
   })();
+
   const safeWeight = (value: number | undefined, fallback: number) =>
     typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   const priorityWeights = {
@@ -91,405 +96,231 @@ export function SortingView() {
     ppgBalance: safeWeight(sortingConfig.priorityWeights.ppgBalance, 0.2),
   };
 
+  const readinessLabel = canSort
+    ? 'Ready to sort'
+    : students.length === 0 && classes.length === 0
+    ? 'Add students and classes'
+    : students.length === 0
+    ? 'Add students'
+    : 'Add classes';
+
+  const sliders: Array<{ key: keyof typeof priorityWeights; label: string }> = [
+    { key: 'friendPreference', label: 'Keep friends together' },
+    { key: 'genderBalance', label: 'Balance boys and girls' },
+    { key: 'ealBalance', label: 'Spread EAL pupils evenly' },
+    { key: 'behaviorBalance', label: 'Balance behaviour levels' },
+    { key: 'abilityBalance', label: 'Balance ability levels' },
+    { key: 'ehcpBalance', label: 'Spread EHCP pupils evenly' },
+    { key: 'sendBalance', label: 'Spread SEND pupils evenly' },
+    { key: 'ppgBalance', label: 'Spread PPG pupils evenly' },
+  ];
+
+  const updateWeight = (key: keyof typeof priorityWeights, value: number) => {
+    setSortingConfig({
+      priorityWeights: {
+        ...priorityWeights,
+        [key]: value,
+      },
+    });
+  };
+
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h2 className="text-lg font-medium text-gray-900">Sort Students into Classes</h2>
+    <div className="space-y-6 max-w-3xl">
+      <div className="space-y-2">
+        <h2 className="text-lg font-medium text-gray-900">Create Class Groups</h2>
+        <p className="text-sm text-gray-600">
+          We&apos;ll create balanced classes and keep the required class sizes by default.
+        </p>
         <p className="text-sm text-gray-500">
-          Configure the sorting algorithm and run it to generate class assignments.
+          You can review the result and move pupils afterwards if needed.
         </p>
       </div>
 
-      {/* Prerequisites */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-medium text-gray-900 mb-3">Prerequisites</h3>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            {students.length > 0 ? (
-              <span className="text-green-600">&#10003;</span>
-            ) : (
-              <span className="text-red-600">&#10007;</span>
-            )}
-            <span className={students.length > 0 ? 'text-gray-700' : 'text-gray-400'}>
-              {students.length} students added
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {classes.length > 0 ? (
-              <span className="text-green-600">&#10003;</span>
-            ) : (
-              <span className="text-red-600">&#10007;</span>
-            )}
-            <span className={classes.length > 0 ? 'text-gray-700' : 'text-gray-400'}>
-              {classes.length} classes configured
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Constraints Summary */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-medium text-gray-900 mb-3">Constraints Summary</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-gray-500">Derived target sizes</p>
-            <p className="text-lg font-medium">{targetSizesLabel || '-'}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Size enforcement</p>
-            <p className="text-lg font-medium capitalize">{sortingConfig.classSizeMode}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Blacklist pairs (hard)</p>
-            <p className="text-lg font-medium text-red-600">{totalBlacklists}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Friend preferences (soft)</p>
-            <p className="text-lg font-medium text-green-600">{totalPreferences}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Male students</p>
-            <p className="text-lg font-medium">{students.filter((s) => s.gender === 'male').length}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Female students</p>
-            <p className="text-lg font-medium">{students.filter((s) => s.gender === 'female').length}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">EAL students</p>
-            <p className="text-lg font-medium">{students.filter((s) => s.isEAL).length}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">EHCP students</p>
-            <p className="text-lg font-medium">{totalEHCP}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">SEND students</p>
-            <p className="text-lg font-medium">{totalSEND}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">PPG students</p>
-            <p className="text-lg font-medium">{totalPPG}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Must-with pairs</p>
-            <p className="text-lg font-medium">{totalMustBeWithPairs}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Students per class (avg)</p>
-            <p className="text-lg font-medium">
-              {classes.length > 0 ? Math.round(students.length / classes.length) : '-'}
+            <h3 className="font-medium text-gray-900">Ready to sort</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              The app will aim for the required class-size split using your current pupils and classes.
             </p>
           </div>
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+              canSort ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+            }`}
+          >
+            {readinessLabel}
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SummaryStat label="Students" value={students.length.toString()} />
+          <SummaryStat label="Classes" value={classes.length.toString()} />
+          <SummaryStat label="Target split" value={targetSizesLabel} />
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-medium text-gray-900 mb-3">Class Size Enforcement</h3>
-        <div className="space-y-3">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="radio"
-              name="classSizeMode"
-              checked={sortingConfig.classSizeMode !== 'flexible'}
-              onChange={() => setSortingConfig({ classSizeMode: 'strict' })}
-              className="mt-1"
-            />
-            <div>
-              <div className="text-sm font-medium text-gray-900">Strict</div>
-              <div className="text-sm text-gray-500">
-                Exact legal class sizes. May override blacklist and must-be-with constraints to hit
-                the required split.
-              </div>
-            </div>
-          </label>
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="radio"
-              name="classSizeMode"
-              checked={sortingConfig.classSizeMode === 'flexible'}
-              onChange={() => setSortingConfig({ classSizeMode: 'flexible' })}
-              className="mt-1"
-            />
-            <div>
-              <div className="text-sm font-medium text-gray-900">Flexible</div>
-              <div className="text-sm text-gray-500">
-                Strongly prefers target sizes, but may trade size for a better overall balance.
-              </div>
-            </div>
-          </label>
-        </div>
-      </div>
+      <div className="bg-white rounded-lg border border-gray-200">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((current) => !current)}
+          className="w-full px-5 py-4 flex items-center justify-between text-left"
+        >
+          <div>
+            <h3 className="font-medium text-gray-900">Advanced settings</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Change class size rules and fine-tune how the groups are balanced.
+            </p>
+          </div>
+          <span className="text-sm font-medium text-blue-600">
+            {showAdvanced ? 'Hide' : 'Show'}
+          </span>
+        </button>
 
-      {/* Priority Weights */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-medium text-gray-900 mb-3">Priority Weights</h3>
-        <div className="space-y-4">
-          {sortingConfig.classSizeMode === 'flexible' && (
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-sm text-gray-700">Class Size Priority</label>
-                <span className="text-sm text-gray-500">
-                  {Math.round(priorityWeights.classSizeBalance * 100)}%
-                </span>
+        {showAdvanced && (
+          <div className="border-t border-gray-200 px-5 py-5 space-y-5">
+            <section className="space-y-3">
+              <div>
+                <h4 className="font-medium text-gray-900">Class size rules</h4>
+                <p className="text-sm text-gray-500 mt-1">
+                  Choose whether class sizes must stay exact or can allow some flexibility.
+                </p>
               </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={priorityWeights.classSizeBalance * 100}
-                onChange={(e) =>
-                  setSortingConfig({
-                    priorityWeights: {
-                      ...priorityWeights,
-                      classSizeBalance: parseInt(e.target.value, 10) / 100,
-                    },
-                  })
-                }
-                className="w-full"
-              />
-            </div>
-          )}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-gray-700">Friend Preferences</label>
-              <span className="text-sm text-gray-500">
-                {Math.round(priorityWeights.friendPreference * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={priorityWeights.friendPreference * 100}
-              onChange={(e) =>
-                setSortingConfig({
-                  priorityWeights: {
-                    ...priorityWeights,
-                    friendPreference: parseInt(e.target.value, 10) / 100,
-                  },
-                })
-              }
-              className="w-full"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-gray-700">Gender Balance</label>
-              <span className="text-sm text-gray-500">
-                {Math.round(priorityWeights.genderBalance * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={priorityWeights.genderBalance * 100}
-              onChange={(e) =>
-                setSortingConfig({
-                  priorityWeights: {
-                    ...priorityWeights,
-                    genderBalance: parseInt(e.target.value, 10) / 100,
-                  },
-                })
-              }
-              className="w-full"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-gray-700">EAL Balance</label>
-              <span className="text-sm text-gray-500">
-                {Math.round(priorityWeights.ealBalance * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={priorityWeights.ealBalance * 100}
-              onChange={(e) =>
-                setSortingConfig({
-                  priorityWeights: {
-                    ...priorityWeights,
-                    ealBalance: parseInt(e.target.value, 10) / 100,
-                  },
-                })
-              }
-              className="w-full"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-gray-700">Behavior Balance</label>
-              <span className="text-sm text-gray-500">
-                {Math.round(priorityWeights.behaviorBalance * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={priorityWeights.behaviorBalance * 100}
-              onChange={(e) =>
-                setSortingConfig({
-                  priorityWeights: {
-                    ...priorityWeights,
-                    behaviorBalance: parseInt(e.target.value, 10) / 100,
-                  },
-                })
-              }
-              className="w-full"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-gray-700">Ability Balance</label>
-              <span className="text-sm text-gray-500">
-                {Math.round(priorityWeights.abilityBalance * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={priorityWeights.abilityBalance * 100}
-              onChange={(e) =>
-                setSortingConfig({
-                  priorityWeights: {
-                    ...priorityWeights,
-                    abilityBalance: parseInt(e.target.value, 10) / 100,
-                  },
-                })
-              }
-              className="w-full"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-gray-700">EHCP Balance</label>
-              <span className="text-sm text-gray-500">
-                {Math.round(priorityWeights.ehcpBalance * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={priorityWeights.ehcpBalance * 100}
-              onChange={(e) =>
-                setSortingConfig({
-                  priorityWeights: {
-                    ...priorityWeights,
-                    ehcpBalance: parseInt(e.target.value, 10) / 100,
-                  },
-                })
-              }
-              className="w-full"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-gray-700">SEND Balance</label>
-              <span className="text-sm text-gray-500">
-                {Math.round(priorityWeights.sendBalance * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={priorityWeights.sendBalance * 100}
-              onChange={(e) =>
-                setSortingConfig({
-                  priorityWeights: {
-                    ...priorityWeights,
-                    sendBalance: parseInt(e.target.value, 10) / 100,
-                  },
-                })
-              }
-              className="w-full"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-gray-700">PPG Balance</label>
-              <span className="text-sm text-gray-500">
-                {Math.round(priorityWeights.ppgBalance * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={priorityWeights.ppgBalance * 100}
-              onChange={(e) =>
-                setSortingConfig({
-                  priorityWeights: {
-                    ...priorityWeights,
-                    ppgBalance: parseInt(e.target.value, 10) / 100,
-                  },
-                })
-              }
-              className="w-full"
-            />
-          </div>
-        </div>
-      </div>
 
-      {/* Algorithm Settings */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="font-medium text-gray-900 mb-3">Algorithm Settings</h3>
-        <div>
-          <label className="block text-sm text-gray-700 mb-1">Max Iterations</label>
-          <input
-            type="number"
-            min="1000"
-            max="100000"
-            step="1000"
-            value={sortingConfig.maxIterations}
-            onChange={(e) =>
-              setSortingConfig({ maxIterations: parseInt(e.target.value, 10) || 10000 })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Higher values may give better results but take longer
-          </p>
-        </div>
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-gray-200 p-3">
+                  <input
+                    type="radio"
+                    name="classSizeMode"
+                    checked={sortingConfig.classSizeMode !== 'flexible'}
+                    onChange={() => setSortingConfig({ classSizeMode: 'strict' })}
+                    className="mt-1"
+                  />
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      Keep class sizes exact
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">Strict mode</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Use the required class-size split exactly, even if other rules need to be broken.
+                    </div>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-gray-200 p-3">
+                  <input
+                    type="radio"
+                    name="classSizeMode"
+                    checked={sortingConfig.classSizeMode === 'flexible'}
+                    onChange={() => setSortingConfig({ classSizeMode: 'flexible' })}
+                    className="mt-1"
+                  />
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      Allow some flexibility
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">Flexible mode</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Strongly prefer the target split, but allow small trade-offs for better balancing.
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                Current target split: <span className="font-medium text-gray-900">{targetSizesLabel}</span>
+              </div>
+
+              {sortingConfig.classSizeMode === 'flexible' && (
+                <SliderRow
+                  label="Prioritise keeping class sizes close"
+                  value={priorityWeights.classSizeBalance}
+                  onChange={(value) => updateWeight('classSizeBalance', value)}
+                />
+              )}
+            </section>
+
+            <section className="space-y-4">
+              <div>
+                <h4 className="font-medium text-gray-900">Fine-tune priorities</h4>
+                <p className="text-sm text-gray-500 mt-1">
+                  Adjust how strongly the app should balance each factor.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {sliders.map((slider) => (
+                  <SliderRow
+                    key={slider.key}
+                    label={slider.label}
+                    value={priorityWeights[slider.key]}
+                    onChange={(value) => updateWeight(slider.key, value)}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div>
+                <h4 className="font-medium text-gray-900">Additional information</h4>
+                <p className="text-sm text-gray-500 mt-1">
+                  Detailed setup counts for checking the current cohort before sorting.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <SummaryStat label="Blacklist pairs" value={totalBlacklists.toString()} compact />
+                <SummaryStat label="Friend preferences" value={totalPreferences.toString()} compact />
+                <SummaryStat label="Must-with pairs" value={totalMustBeWithPairs.toString()} compact />
+                <SummaryStat label="Boys / Girls" value={`${totalMale} / ${totalFemale}`} compact />
+                <SummaryStat label="EAL" value={totalEAL.toString()} compact />
+                <SummaryStat label="EHCP" value={totalEHCP.toString()} compact />
+                <SummaryStat label="SEND" value={totalSEND.toString()} compact />
+                <SummaryStat label="PPG" value={totalPPG.toString()} compact />
+                <SummaryStat
+                  label="Average per class"
+                  value={classes.length > 0 ? Math.round(students.length / classes.length).toString() : '-'}
+                  compact
+                />
+              </div>
+            </section>
+          </div>
+        )}
       </div>
 
       {error && (
         <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md text-sm">{error}</div>
       )}
 
-      {/* Sort Button */}
-      <div className="flex items-center gap-4">
+      <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
         <button
           onClick={handleSort}
           disabled={!canSort || isSorting}
-          className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSorting ? 'Sorting...' : 'Run Sorting Algorithm'}
+          {isSorting ? 'Creating groups...' : 'Create Class Groups'}
         </button>
+
         {isSorting && (
-          <div className="flex-1">
+          <div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-600 transition-all duration-200"
                 style={{ width: `${sortingProgress}%` }}
               />
             </div>
-            <p className="text-sm text-gray-500 mt-1">{Math.round(sortingProgress)}% complete</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Creating class groups... {Math.round(sortingProgress)}%
+            </p>
           </div>
         )}
-      </div>
 
-      {!canSort && (
-        <p className="text-sm text-amber-600">
-          Please add students and configure classes before sorting.
-        </p>
-      )}
+        {!canSort && (
+          <p className="text-sm text-amber-600">
+            Add students and classes before creating class groups.
+          </p>
+        )}
+      </div>
 
       {pendingStrictResult && (
         <ConfirmDialog
@@ -506,6 +337,50 @@ export function SortingView() {
           onCancel={() => setPendingStrictResult(null)}
         />
       )}
+    </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`rounded-lg border border-gray-200 ${compact ? 'p-3' : 'p-4'}`}>
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className={`${compact ? 'text-lg' : 'text-xl'} font-medium text-gray-900 mt-1`}>{value}</p>
+    </div>
+  );
+}
+
+function SliderRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-sm text-gray-700">{label}</label>
+        <span className="text-sm text-gray-500">{Math.round(value * 100)}%</span>
+      </div>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        value={value * 100}
+        onChange={(e) => onChange(parseInt(e.target.value, 10) / 100)}
+        className="w-full"
+      />
     </div>
   );
 }
