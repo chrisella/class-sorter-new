@@ -1,5 +1,22 @@
 import type { Student, Class, ClassStatistics } from '../types';
 
+export function sortStudentsAlphabetically(students: Student[]): Student[] {
+  return [...students].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  );
+}
+
+function getStudentsOrderedForClassAssignments(students: Student[], classes: Class[]): Student[] {
+  const orderedAssignedStudents = classes.flatMap((cls) =>
+    sortStudentsAlphabetically(students.filter((student) => student.assignedClassId === cls.id))
+  );
+  const orderedUnassignedStudents = sortStudentsAlphabetically(
+    students.filter((student) => student.assignedClassId === null)
+  );
+
+  return [...orderedAssignedStudents, ...orderedUnassignedStudents];
+}
+
 export function exportStudentsCSV(
   students: Student[],
   getStudentById: (id: string) => Student | undefined
@@ -83,7 +100,9 @@ export function exportToCSV(
     'Blacklisted Students',
   ];
 
-  const rows = students.map((student) => {
+  const orderedStudents = getStudentsOrderedForClassAssignments(students, classes);
+
+  const rows = orderedStudents.map((student) => {
     const assignedClass = classes.find((c) => c.id === student.assignedClassId);
     const preferredFriendNames = student.preferredFriends
       .map((id) => getStudentById(id)?.name)
@@ -203,7 +222,9 @@ function generatePDFHTML(
 
   let classesHTML = '';
   for (const cls of classes) {
-    const classStudents = students.filter((s) => s.assignedClassId === cls.id);
+    const classStudents = sortStudentsAlphabetically(
+      students.filter((student) => student.assignedClassId === cls.id)
+    );
     const stats = classStatistics?.find((cs) => cs.classId === cls.id);
     const behaviorAverage =
       classStudents.length > 0

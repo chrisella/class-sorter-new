@@ -2,7 +2,7 @@ import { useState, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useClassStore, useStudentStore } from '../../stores';
 import { calculateStudentSatisfaction, getAssignmentInsights } from '../../utils/sortingAlgorithm';
-import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
+import { exportToCSV, exportToPDF, sortStudentsAlphabetically } from '../../utils/exportUtils';
 import type { Student, ClassStatistics } from '../../types';
 
 interface FriendsTooltipProps {
@@ -182,7 +182,9 @@ export function ResultsView() {
   const resultsCardWrapperClassName = hasTwoClassLayout ? 'w-full max-w-[760px] mx-auto' : 'w-full';
 
   const calculateClassStatistics = (classId: string): ClassStatistics | undefined => {
-    const classStudents = students.filter((s) => s.assignedClassId === classId);
+    const classStudents = sortStudentsAlphabetically(
+      students.filter((student) => student.assignedClassId === classId)
+    );
     if (classStudents.length === 0) return undefined;
 
     const studentSatisfaction: ClassStatistics['studentSatisfaction'] = classStudents.map((student) =>
@@ -323,7 +325,9 @@ export function ResultsView() {
       <div className={resultsOuterWrapperClassName}>
         <div className={resultsGridClassName}>
         {classes.map((cls) => {
-          const classStudents = students.filter((s) => s.assignedClassId === cls.id);
+          const classStudents = sortStudentsAlphabetically(
+            students.filter((student) => student.assignedClassId === cls.id)
+          );
           const stats = getClassStats(cls.id);
           const targetSize = insights.sizeCompliance.classTargets[cls.id] ?? cls.targetSize;
           const deviation = insights.sizeCompliance.classDeviations[cls.id] ?? 0;
