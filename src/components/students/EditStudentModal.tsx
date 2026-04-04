@@ -71,7 +71,7 @@ export function EditStudentModal({ student, onClose }: Props) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Edit Student</h3>
+          <h3 className="text-lg font-medium text-gray-900">Edit Pupil</h3>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -83,7 +83,7 @@ export function EditStudentModal({ student, onClose }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter student name"
+              placeholder="Enter pupil name"
             />
           </div>
 
@@ -191,7 +191,7 @@ export function EditStudentModal({ student, onClose }: Props) {
           {/* Preferred Friends */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Preferred Friends (max 3)
+              Friends to try to keep with (max 3)
             </label>
             <StudentSelect
               students={students}
@@ -200,14 +200,14 @@ export function EditStudentModal({ student, onClose }: Props) {
               excludeSelf={student.id}
               onChange={setPreferredFriends}
               maxSelections={3}
-              placeholder="Select preferred friends..."
+              placeholder="Search for pupils..."
             />
           </div>
 
           {/* Blacklisted Students */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cannot be placed with
+              Should not be placed with
             </label>
             <StudentSelect
               students={students}
@@ -215,14 +215,14 @@ export function EditStudentModal({ student, onClose }: Props) {
               excludeIds={[...preferredFriends, ...mustBeWith]}
               excludeSelf={student.id}
               onChange={setBlacklistedStudents}
-              placeholder="Select students to avoid..."
+              placeholder="Search for pupils to avoid..."
             />
           </div>
 
           {/* Must Be With */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Must be with (optional)
+              Must stay with (optional)
             </label>
             <StudentSelect
               students={students}
@@ -231,7 +231,7 @@ export function EditStudentModal({ student, onClose }: Props) {
               excludeSelf={student.id}
               onChange={setMustBeWith}
               maxSelections={1}
-              placeholder="Select one student..."
+              placeholder="Search for one pupil..."
             />
             {pairError && (
               <p className="mt-1 text-xs text-red-600">{pairError}</p>

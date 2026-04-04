@@ -126,17 +126,15 @@ export function SortingView() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="space-y-2">
-        <h2 className="text-lg font-medium text-gray-900">Create Class Groups</h2>
-        <p className="text-sm text-gray-600">
-          We&apos;ll create balanced classes and keep the required class sizes by default.
-        </p>
-        <p className="text-sm text-gray-500">
-          You can review the result and move pupils afterwards if needed.
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-sm font-medium uppercase tracking-[0.18em] text-sky-700">Step 3</p>
+        <h2 className="mt-2 text-2xl font-semibold text-slate-900">Create groups</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Start with the recommended settings below. You can review the groups afterwards and move pupils if you need to.
         </p>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="font-medium text-gray-900">Ready to sort</h3>
@@ -160,7 +158,7 @@ export function SortingView() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
         <button
           type="button"
           onClick={() => setShowAdvanced((current) => !current)}
@@ -169,7 +167,7 @@ export function SortingView() {
           <div>
             <h3 className="font-medium text-gray-900">Advanced settings</h3>
             <p className="text-sm text-gray-500 mt-1">
-              Change class size rules and fine-tune how the groups are balanced.
+              Change the class size rule or fine-tune how strongly the app balances each factor.
             </p>
           </div>
           <span className="text-sm font-medium text-blue-600">
@@ -183,7 +181,7 @@ export function SortingView() {
               <div>
                 <h4 className="font-medium text-gray-900">Class size rules</h4>
                 <p className="text-sm text-gray-500 mt-1">
-                  Choose whether class sizes must stay exact or can allow some flexibility.
+                  Choose how strictly the groups should stick to the target class sizes.
                 </p>
               </div>
 
@@ -197,12 +195,15 @@ export function SortingView() {
                     className="mt-1"
                   />
                   <div>
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
                       Keep class sizes exact
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                        Recommended
+                      </span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">Strict mode</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Best when class numbers must be exact</div>
                     <div className="text-sm text-gray-600 mt-1">
-                      Use the required class-size split exactly, even if other rules need to be broken.
+                      Match the target sizes exactly, even if that sometimes means accepting other compromises.
                     </div>
                   </div>
                 </label>
@@ -216,12 +217,10 @@ export function SortingView() {
                     className="mt-1"
                   />
                   <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      Allow some flexibility
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">Flexible mode</div>
+                    <div className="text-sm font-medium text-gray-900">Allow some flexibility</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Best when balance matters more than exact numbers</div>
                     <div className="text-sm text-gray-600 mt-1">
-                      Strongly prefer the target split, but allow small trade-offs for better balancing.
+                      Stay close to the target sizes, but allow small differences for a better overall balance.
                     </div>
                   </div>
                 </label>
@@ -244,7 +243,7 @@ export function SortingView() {
               <div>
                 <h4 className="font-medium text-gray-900">Fine-tune priorities</h4>
                 <p className="text-sm text-gray-500 mt-1">
-                  Adjust how strongly the app should balance each factor.
+                  Only change these if you want more control over the balancing rules.
                 </p>
               </div>
 
@@ -292,13 +291,13 @@ export function SortingView() {
         <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md text-sm">{error}</div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
         <button
           onClick={handleSort}
           disabled={!canSort || isSorting}
-          className="w-full sm:w-auto px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-2xl bg-sky-600 px-6 py-3 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
-          {isSorting ? 'Creating groups...' : 'Create Class Groups'}
+          {isSorting ? 'Creating groups...' : 'Create Groups'}
         </button>
 
         {isSorting && (
@@ -317,7 +316,7 @@ export function SortingView() {
 
         {!canSort && (
           <p className="text-sm text-amber-600">
-            Add students and classes before creating class groups.
+            Add pupils and classes before creating groups.
           </p>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type View = 'students' | 'classes' | 'sorting' | 'results' | 'statistics';
+type View = 'students' | 'classes' | 'sorting' | 'results';
 
 interface UIState {
   currentView: View;

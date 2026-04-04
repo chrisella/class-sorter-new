@@ -15,38 +15,42 @@ export function StudentView() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-lg font-medium text-gray-900">Students</h2>
-          <p className="text-sm text-gray-500">{students.length} students total</p>
+          <p className="text-sm font-medium uppercase tracking-[0.18em] text-sky-700">Step 1</p>
+          <h2 className="mt-2 text-2xl font-semibold text-slate-900">Add your pupils</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Start with a CSV import if you already have a class list, or add pupils one by one. You can still edit every detail later.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">{students.length} pupils currently loaded</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700"
+          >
+            Add Pupil
+          </button>
           {students.length > 0 && (
             <button
               onClick={() => exportStudentsCSV(students, getStudentById)}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Export CSV
             </button>
           )}
           <button
             onClick={() => setShowImport(true)}
-            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Import CSV
-          </button>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-          >
-            Add Student
           </button>
           {students.length > 0 && (
             <button
               onClick={() => setShowClearConfirm(true)}
-              className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50"
+              className="rounded-xl border border-rose-300 bg-white px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
             >
-              Clear All
+              Remove All Pupils
             </button>
           )}
         </div>
@@ -56,9 +60,9 @@ export function StudentView() {
       {students.length > 0 ? (
         <StudentTable />
       ) : (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="rounded-3xl border border-slate-200 bg-white py-14 text-center shadow-sm">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-slate-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -70,20 +74,22 @@ export function StudentView() {
               d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No students</h3>
-          <p className="mt-1 text-sm text-gray-500">Get started by adding students or importing a CSV file.</p>
+          <h3 className="mt-4 text-lg font-semibold text-slate-900">No pupils added yet</h3>
+          <p className="mt-2 text-sm text-slate-600">
+            Import your pupil list from CSV for the quickest start, or add pupils one at a time if you are building the list manually.
+          </p>
           <div className="mt-6 flex justify-center gap-3">
             <button
               onClick={() => setShowImport(true)}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Import CSV
             </button>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              className="rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700"
             >
-              Add Student
+              Add Pupil
             </button>
           </div>
         </div>
@@ -94,8 +100,8 @@ export function StudentView() {
       {showImport && <ImportDialog onClose={() => setShowImport(false)} />}
       {showClearConfirm && (
         <ConfirmDialog
-          title="Clear All Students"
-          message="Are you sure you want to delete all students? This cannot be undone."
+          title="Remove All Pupils"
+          message="Are you sure you want to remove every pupil from this list? This cannot be undone."
           confirmLabel="Delete All"
           onConfirm={() => {
             deleteAllStudents();

@@ -59,32 +59,36 @@ export function ClassesView() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-lg font-medium text-gray-900">Classes</h2>
-          <p className="text-sm text-gray-500">
-            {classes.length} classes configured | {students.length} students to distribute
+          <p className="text-sm font-medium uppercase tracking-[0.18em] text-sky-700">Step 2</p>
+          <h2 className="mt-2 text-2xl font-semibold text-slate-900">Set up your classes</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Add the classes you want to fill. Target sizes are calculated automatically from the number of pupils.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            {classes.length} classes configured | {students.length} pupils to distribute
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowGenerateDialog(true)}
-            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Auto Generate
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowAddForm(true)}
-            className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            className="rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700"
           >
             Add Class
+          </button>
+          <button
+            onClick={() => setShowGenerateDialog(true)}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Auto Generate
           </button>
           {classes.length > 0 && (
             <button
               onClick={() => setShowClearConfirm(true)}
-              className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50"
+              className="rounded-xl border border-rose-300 bg-white px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
             >
-              Clear All
+              Remove All Classes
             </button>
           )}
         </div>
@@ -92,7 +96,7 @@ export function ClassesView() {
 
       {/* Add Class Form */}
       {showAddForm && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <form onSubmit={handleAddClass} className="flex items-end gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -223,7 +227,7 @@ export function ClassesView() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="rounded-3xl border border-slate-200 bg-white py-14 text-center shadow-sm">
           <svg
             className="mx-auto h-12 w-12 text-gray-400"
             fill="none"
@@ -237,20 +241,20 @@ export function ClassesView() {
               d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No classes configured</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Add classes manually or auto-generate them.
+          <h3 className="mt-4 text-lg font-semibold text-slate-900">No classes set up yet</h3>
+          <p className="mt-2 text-sm text-slate-600">
+            Create the classes you want to fill. Auto-generate is quickest if you only need simple class names such as Class A, B, and C.
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <button
               onClick={() => setShowGenerateDialog(true)}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Auto Generate
             </button>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              className="rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700"
             >
               Add Class
             </button>
@@ -261,8 +265,8 @@ export function ClassesView() {
       {/* Dialogs */}
       {showClearConfirm && (
         <ConfirmDialog
-          title="Clear All Classes"
-          message="Are you sure you want to delete all classes?"
+          title="Remove All Classes"
+          message="Are you sure you want to remove every class?"
           confirmLabel="Delete All"
           onConfirm={() => {
             deleteAllClasses();
