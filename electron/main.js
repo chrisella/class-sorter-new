@@ -1,8 +1,10 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
+let checkingForUpdate = false;
+let manualUpdateCheck = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -24,10 +26,55 @@ function createWindow() {
   }
 }
 
+function buildMenu() {
+  const template = [
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Check for Updates',
+          click: () => {
+            if (checkingForUpdate) return;
+            manualUpdateCheck = true;
+            checkingForUpdate = true;
+            autoUpdater.checkForUpdates().catch((err) => {
+              checkingForUpdate = false;
+              manualUpdateCheck = false;
+              dialog.showMessageBox(mainWindow, {
+                type: 'error',
+                title: 'Update check failed',
+                message: `Could not check for updates: ${err.message}`,
+              });
+            });
+          },
+        },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 function setupAutoUpdater() {
-  autoUpdater.checkForUpdatesAndNotify();
+  autoUpdater.on('checking-for-update', () => {
+    checkingForUpdate = true;
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    checkingForUpdate = false;
+    if (manualUpdateCheck) {
+      manualUpdateCheck = false;
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'No update available',
+        message: `Class Sorter ${app.getVersion()} is the latest version.`,
+      });
+    }
+  });
 
   autoUpdater.on('update-available', () => {
+    checkingForUpdate = false;
+    manualUpdateCheck = false;
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update available',
@@ -46,10 +93,13 @@ function setupAutoUpdater() {
       if (response === 0) autoUpdater.quitAndInstall();
     });
   });
+
+  autoUpdater.checkForUpdatesAndNotify();
 }
 
 app.whenReady().then(() => {
   createWindow();
+  buildMenu();
 
   if (app.isPackaged) {
     setupAutoUpdater();
