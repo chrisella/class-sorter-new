@@ -31,35 +31,84 @@ function FriendsTooltip({ student, classId, getStudentById, anchorRef }: Friends
     return null;
   }
 
-  const content = student.preferredFriends.length === 0 ? (
-    <div className="text-slate-400">No preferred friends recorded</div>
-  ) : (
-    <>
-      <div className="mb-1.5 font-medium text-slate-200">Friend requests</div>
-      <div className="space-y-1">
-        {student.preferredFriends.map((friendId) => {
-          const friend = getStudentById(friendId);
-          if (!friend) return null;
-          const inSameClass = friend.assignedClassId === classId;
-
-          return (
-            <div key={friendId} className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${inSameClass ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-              <span className={inSameClass ? 'text-emerald-300' : 'text-slate-300'}>{friend.name}</span>
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
+  const mustBeWithPartner = student.mustBeWithStudentId ? getStudentById(student.mustBeWithStudentId) : null;
+  const hasSections =
+    student.preferredFriends.length > 0 ||
+    mustBeWithPartner !== null ||
+    student.blacklistedStudents.length > 0;
 
   return createPortal(
     <div
-      className="fixed z-50 min-w-44 -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg"
+      className="fixed z-50 min-w-48 -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2.5 text-xs text-white shadow-lg"
       style={{ top: position.top, left: position.left }}
     >
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-      {content}
+
+      {!hasSections && (
+        <div className="text-slate-400">No constraints recorded</div>
+      )}
+
+      {mustBeWithPartner && (
+        <div className={student.preferredFriends.length > 0 ? 'mb-3' : ''}>
+          <div className="mb-1.5 font-medium text-violet-300">Must stay with</div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                mustBeWithPartner.assignedClassId === classId ? 'bg-emerald-400' : 'bg-rose-400'
+              }`}
+            />
+            <span
+              className={
+                mustBeWithPartner.assignedClassId === classId ? 'text-emerald-300' : 'text-rose-300'
+              }
+            >
+              {mustBeWithPartner.name}
+            </span>
+            {mustBeWithPartner.assignedClassId !== classId && (
+              <span className="text-rose-400">— split!</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {student.blacklistedStudents.length > 0 && (
+        <div className={student.preferredFriends.length > 0 ? 'mb-3' : mustBeWithPartner ? 'mt-3 border-t border-slate-700 pt-3' : ''}>
+          <div className="mb-1.5 font-medium text-rose-300">Keep apart from</div>
+          <div className="space-y-1">
+            {student.blacklistedStudents.map((peerId) => {
+              const peer = getStudentById(peerId);
+              if (!peer) return null;
+              const conflict = peer.assignedClassId === classId;
+              return (
+                <div key={peerId} className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${conflict ? 'bg-rose-400' : 'bg-slate-500'}`} />
+                  <span className={conflict ? 'text-rose-300' : 'text-slate-300'}>{peer.name}</span>
+                  {conflict && <span className="text-rose-400">— conflict!</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {student.preferredFriends.length > 0 && (
+        <div className={mustBeWithPartner || student.blacklistedStudents.length > 0 ? 'border-t border-slate-700 pt-3' : ''}>
+          <div className="mb-1.5 font-medium text-slate-200">Friend requests</div>
+          <div className="space-y-1">
+            {student.preferredFriends.map((friendId) => {
+              const friend = getStudentById(friendId);
+              if (!friend) return null;
+              const inSameClass = friend.assignedClassId === classId;
+              return (
+                <div key={friendId} className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${inSameClass ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+                  <span className={inSameClass ? 'text-emerald-300' : 'text-slate-300'}>{friend.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
@@ -74,7 +123,7 @@ interface StudentCardProps {
   onDragStart: (e: React.DragEvent, student: Student) => void;
 }
 
-function StudentCard({
+function StudentRow({
   student,
   classId,
   students,
@@ -83,65 +132,63 @@ function StudentCard({
   onDragStart,
 }: StudentCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const satisfaction = calculateStudentSatisfaction(student, classId, students);
   const hasViolation = satisfaction.hasBlacklistViolation || satisfaction.hasMustBeWithViolation;
   const toneClassName = getSatisfactionTone(satisfaction.score, hasViolation);
-  const friendSummary =
-    satisfaction.maxPossibleFriends > 0
-      ? `${satisfaction.preferredFriendsInClass}/${satisfaction.maxPossibleFriends} requested friends matched`
-      : 'No friend requests recorded';
 
   return (
     <div
-      ref={cardRef}
+      ref={rowRef}
       draggable
       onDragStart={(e) => onDragStart(e, student)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`relative cursor-grab rounded-xl border p-3 shadow-sm active:cursor-grabbing ${toneClassName}`}
+      className={`relative flex cursor-grab items-center gap-2 rounded-lg border px-2.5 py-1.5 active:cursor-grabbing ${toneClassName}`}
     >
       {isHovered && (
         <FriendsTooltip
           student={student}
           classId={classId}
           getStudentById={getStudentById}
-          anchorRef={cardRef}
+          anchorRef={rowRef}
         />
       )}
 
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold">{student.name}</p>
-          <p className="mt-1 text-xs opacity-80">
-            {hasViolation
-              ? satisfaction.hasBlacklistViolation
-                ? 'Conflict: paired with a pupil they should avoid'
-                : 'Conflict: must-stay-together pair is split'
-              : friendSummary}
-          </p>
-        </div>
-        <span className="rounded-full bg-white/70 px-2 py-1 text-[11px] font-semibold">
-          {Math.round(satisfaction.score)}%
+      <svg className="h-3 w-3 shrink-0 opacity-35" fill="currentColor" viewBox="0 0 16 16">
+        <circle cx="5" cy="3" r="1.2" /><circle cx="5" cy="8" r="1.2" /><circle cx="5" cy="13" r="1.2" />
+        <circle cx="11" cy="3" r="1.2" /><circle cx="11" cy="8" r="1.2" /><circle cx="11" cy="13" r="1.2" />
+      </svg>
+
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">{student.name}</span>
+
+      <div className="flex shrink-0 items-center gap-1 text-[10px] font-semibold">
+        <span className={`rounded bg-white/70 px-1 py-0.5 ${student.gender === 'male' ? 'text-sky-600' : 'text-fuchsia-600'}`}>
+          {student.gender === 'male' ? 'M' : 'F'}
         </span>
+        {student.isEAL && <span className="rounded bg-white/70 px-1 py-0.5">EAL</span>}
+        {student.ehcp && <span className="rounded bg-white/70 px-1 py-0.5">EHCP</span>}
+        {student.send && <span className="rounded bg-white/70 px-1 py-0.5">SEND</span>}
+        {student.ppg && <span className="rounded bg-white/70 px-1 py-0.5">PPG</span>}
+        {student.mustBeWithStudentId && (
+          <span
+            className="rounded bg-white/70 px-1 py-0.5 text-violet-600"
+            title={`Must stay with: ${getStudentById(student.mustBeWithStudentId)?.name ?? 'Unknown'}`}
+          >
+            ↔
+          </span>
+        )}
+        {student.blacklistedStudents.length > 0 && (
+          <span className="rounded bg-white/70 px-1 py-0.5 text-rose-600" title="Has keep-apart constraints">
+            ⊘
+          </span>
+        )}
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium">
-        <span className="rounded-full bg-white/60 px-2 py-1">
-          {student.gender === 'male' ? 'Boy' : 'Girl'}
-        </span>
-        {student.isEAL && <span className="rounded-full bg-white/60 px-2 py-1">EAL</span>}
-        {student.ehcp && <span className="rounded-full bg-white/60 px-2 py-1">EHCP</span>}
-        {student.send && <span className="rounded-full bg-white/60 px-2 py-1">SEND</span>}
-        {student.ppg && <span className="rounded-full bg-white/60 px-2 py-1">PPG</span>}
-      </div>
-
-      {student.mustBeWithStudentId && (
-        <p className="mt-3 text-[11px] font-medium opacity-80">
-          Must stay with: {getStudentById(student.mustBeWithStudentId)?.name || 'Unknown pupil'}
-        </p>
-      )}
+      <span className="shrink-0 rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold">
+        {Math.round(satisfaction.score)}%
+      </span>
     </div>
   );
 }
@@ -498,9 +545,9 @@ export function ResultsView() {
                         Drop a pupil here from another class.
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         {classStudents.map((student) => (
-                          <StudentCard
+                          <StudentRow
                             key={student.id}
                             student={student}
                             classId={cls.id}
