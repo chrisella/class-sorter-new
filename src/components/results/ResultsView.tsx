@@ -69,22 +69,18 @@ interface StudentCardProps {
   student: Student;
   classId: string;
   students: Student[];
-  classOptions: Array<{ id: string; name: string }>;
   getStudentById: (id: string) => Student | undefined;
   getSatisfactionTone: (score: number, hasViolation: boolean) => string;
   onDragStart: (e: React.DragEvent, student: Student) => void;
-  onMove: (studentId: string, targetClassId: string) => void;
 }
 
 function StudentCard({
   student,
   classId,
   students,
-  classOptions,
   getStudentById,
   getSatisfactionTone,
   onDragStart,
-  onMove,
 }: StudentCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -104,7 +100,7 @@ function StudentCard({
       onDragStart={(e) => onDragStart(e, student)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`relative rounded-xl border p-3 shadow-sm ${toneClassName}`}
+      className={`relative cursor-grab rounded-xl border p-3 shadow-sm active:cursor-grabbing ${toneClassName}`}
     >
       {isHovered && (
         <FriendsTooltip
@@ -146,24 +142,6 @@ function StudentCard({
           Must stay with: {getStudentById(student.mustBeWithStudentId)?.name || 'Unknown pupil'}
         </p>
       )}
-
-      <div className="mt-3 flex items-center gap-2">
-        <label className="text-[11px] font-medium opacity-80" htmlFor={`move-${student.id}`}>
-          Move to
-        </label>
-        <select
-          id={`move-${student.id}`}
-          value={classId}
-          onChange={(e) => onMove(student.id, e.target.value)}
-          className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
-        >
-          {classOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.name}
-            </option>
-          ))}
-        </select>
-      </div>
     </div>
   );
 }
@@ -182,7 +160,6 @@ export function ResultsView() {
       ? !insights.sizeCompliance.isExact
       : insights.sizeCompliance.maxDeviation > 1;
 
-  const classOptions = classes.map((cls) => ({ id: cls.id, name: cls.name }));
   const resultsContentHeightClassName = 'xl:h-[calc(100vh-24rem)]';
   const hasTwoClassLayout = classes.length === 2;
   const hasMultiClassGrid = classes.length >= 3;
@@ -336,12 +313,6 @@ export function ResultsView() {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleMove = (studentId: string, targetClassId: string) => {
-    const student = students.find((item) => item.id === studentId);
-    if (!student || student.assignedClassId === targetClassId) return;
-    assignStudentToClass(studentId, targetClassId);
-  };
-
   const handleDrop = (e: React.DragEvent, targetClassId: string) => {
     e.preventDefault();
     if (draggedStudent && draggedStudent.assignedClassId !== targetClassId) {
@@ -392,7 +363,7 @@ export function ResultsView() {
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-sky-700">Step 4</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Review groups</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Check the highlighted issues first, then make any final adjustments. You can drag pupils between classes or use the move dropdown on each card.
+              Check the highlighted issues first, then make any final adjustments. Drag pupils between classes to move them.
             </p>
           </div>
 
@@ -524,7 +495,7 @@ export function ResultsView() {
                   <div className="min-h-[240px] flex-1 overflow-y-auto p-3">
                     {classStudents.length === 0 ? (
                       <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-                        Drop a pupil here or use the move dropdown on another card.
+                        Drop a pupil here from another class.
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -534,11 +505,9 @@ export function ResultsView() {
                             student={student}
                             classId={cls.id}
                             students={students}
-                            classOptions={classOptions}
                             getStudentById={getStudentById}
                             getSatisfactionTone={getSatisfactionTone}
                             onDragStart={handleDragStart}
-                            onMove={handleMove}
                           />
                         ))}
                       </div>
