@@ -125,7 +125,7 @@ export function SortingView() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-sky-700">Step 3</p>
         <h2 className="mt-2 text-2xl font-semibold text-slate-900">Create groups</h2>
@@ -267,7 +267,7 @@ export function SortingView() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <SummaryStat label="Blacklist pairs" value={totalBlacklists.toString()} compact />
                 <SummaryStat label="Friend preferences" value={totalPreferences.toString()} compact />
                 <SummaryStat label="Must-with pairs" value={totalMustBeWithPairs.toString()} compact />
