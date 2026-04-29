@@ -114,6 +114,8 @@ function FriendsTooltip({ student, classId, getStudentById, anchorRef }: Friends
   );
 }
 
+type FocusRelationship = 'none' | 'focused' | 'must-be-with' | 'friend' | 'blacklist' | 'unrelated';
+
 interface StudentCardProps {
   student: Student;
   classId: string;
@@ -121,6 +123,9 @@ interface StudentCardProps {
   getStudentById: (id: string) => Student | undefined;
   getSatisfactionTone: (score: number, hasViolation: boolean) => string;
   onDragStart: (e: React.DragEvent, student: Student) => void;
+  focusedStudentId: string | null;
+  focusedStudent: Student | null;
+  onFocusToggle: (studentId: string) => void;
 }
 
 function StudentRow({
@@ -130,6 +135,9 @@ function StudentRow({
   getStudentById,
   getSatisfactionTone,
   onDragStart,
+  focusedStudentId,
+  focusedStudent,
+  onFocusToggle,
 }: StudentCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -138,6 +146,33 @@ function StudentRow({
   const hasViolation = satisfaction.hasBlacklistViolation || satisfaction.hasMustBeWithViolation;
   const toneClassName = getSatisfactionTone(satisfaction.score, hasViolation);
 
+  const relationship: FocusRelationship = (() => {
+    if (focusedStudentId === null) return 'none';
+    if (student.id === focusedStudentId) return 'focused';
+    if (!focusedStudent) return 'unrelated';
+    if (
+      focusedStudent.mustBeWithStudentId === student.id ||
+      student.mustBeWithStudentId === focusedStudentId
+    ) return 'must-be-with';
+    if (
+      focusedStudent.preferredFriends.includes(student.id) ||
+      student.preferredFriends.includes(focusedStudentId)
+    ) return 'friend';
+    if (
+      focusedStudent.blacklistedStudents.includes(student.id) ||
+      student.blacklistedStudents.includes(focusedStudentId)
+    ) return 'blacklist';
+    return 'unrelated';
+  })();
+
+  const focusRingClass =
+    relationship === 'focused'     ? 'ring-2 ring-inset ring-slate-700' :
+    relationship === 'must-be-with'? 'ring-2 ring-inset ring-violet-500' :
+    relationship === 'friend'      ? 'ring-2 ring-inset ring-emerald-500' :
+    relationship === 'blacklist'   ? 'ring-2 ring-inset ring-rose-500' :
+    relationship === 'unrelated'   ? 'opacity-25' :
+    '';
+
   return (
     <div
       ref={rowRef}
@@ -145,9 +180,10 @@ function StudentRow({
       onDragStart={(e) => onDragStart(e, student)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`relative flex cursor-grab items-center gap-2 rounded-lg border px-2.5 py-1.5 active:cursor-grabbing ${toneClassName}`}
+      onClick={(e) => { e.stopPropagation(); onFocusToggle(student.id); }}
+      className={`relative flex cursor-grab items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-opacity duration-150 active:cursor-grabbing ${toneClassName} ${focusRingClass}`}
     >
-      {isHovered && (
+      {isHovered && relationship !== 'unrelated' && (
         <FriendsTooltip
           student={student}
           classId={classId}
@@ -198,6 +234,13 @@ export function ResultsView() {
   const { students, assignStudentToClass, getStudentById } = useStudentStore();
   const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
+  const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null);
+
+  const focusedStudent = focusedStudentId ? (students.find((s) => s.id === focusedStudentId) ?? null) : null;
+
+  const handleFocusToggle = (studentId: string) => {
+    setFocusedStudentId((prev) => (prev === studentId ? null : studentId));
+  };
 
   const assignedStudents = students.filter((student) => student.assignedClassId !== null);
   const activeClassSizeMode = lastSortingResult?.classSizeMode ?? sortingConfig.classSizeMode;
@@ -484,7 +527,7 @@ export function ResultsView() {
         </div>
       )}
 
-      <div className={resultsOuterWrapperClassName}>
+      <div className={resultsOuterWrapperClassName} onClick={() => setFocusedStudentId(null)}>
         <div className={resultsGridClassName}>
           {classes.map((cls) => {
             const classStudents = sortStudentsAlphabetically(
@@ -555,6 +598,9 @@ export function ResultsView() {
                             getStudentById={getStudentById}
                             getSatisfactionTone={getSatisfactionTone}
                             onDragStart={handleDragStart}
+                            focusedStudentId={focusedStudentId}
+                            focusedStudent={focusedStudent}
+                            onFocusToggle={handleFocusToggle}
                           />
                         ))}
                       </div>
