@@ -2,6 +2,8 @@
   "name": "class-sorter",
   "private": true,
   "version": "0.1.0",
+  "description": "A desktop app for teachers to sort students into balanced classes",
+  "author": "Chris Ella",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
@@ -44,12 +46,15 @@
     },
     "mac": {
       "category": "public.app-category.education",
+      "icon": "assets/icons/mac/icon.icns",
       "target": ["dmg"]
     },
     "win": {
+      "icon": "assets/icons/win/icon.ico",
       "target": ["nsis"]
     },
     "linux": {
+      "icon": "assets/icons/png/512x512.png",
       "target": ["AppImage"],
       "category": "Education"
     }
