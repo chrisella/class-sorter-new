@@ -235,6 +235,7 @@ export function ResultsView() {
   const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
   const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null);
+  const [showHint, setShowHint] = useState(true);
 
   const focusedStudent = focusedStudentId ? (students.find((s) => s.id === focusedStudentId) ?? null) : null;
 
@@ -348,51 +349,6 @@ export function ResultsView() {
       : 'All must-stay-together pairs are still together.',
   ];
 
-  const warningCards = [
-    {
-      title: 'Class size check',
-      tone: currentSizeWarning
-        ? 'border-rose-200 bg-rose-50 text-rose-900'
-        : 'border-emerald-200 bg-emerald-50 text-emerald-900',
-      message: currentSizeWarning
-        ? `Adjust placements until the groups match ${insights.sizeCompliance.targetSizes.join(' / ')}.`
-        : 'Class sizes are acceptable for the current mode.',
-      count: currentSizeWarning ? 'Action needed' : 'Clear',
-    },
-    {
-      title: 'Keep-apart conflicts',
-      tone:
-        insights.blacklistViolations.length > 0
-          ? 'border-amber-200 bg-amber-50 text-amber-900'
-          : 'border-emerald-200 bg-emerald-50 text-emerald-900',
-      message:
-        insights.blacklistViolations.length > 0
-          ? 'Move the highlighted pupils so each keep-apart pair ends up in different classes.'
-          : 'No keep-apart conflicts were found.',
-      count: insights.blacklistViolations.length.toString(),
-    },
-    {
-      title: 'Must-stay-together pairs',
-      tone:
-        insights.mustBeWithViolations.length > 0
-          ? 'border-amber-200 bg-amber-50 text-amber-900'
-          : 'border-emerald-200 bg-emerald-50 text-emerald-900',
-      message:
-        insights.mustBeWithViolations.length > 0
-          ? 'Move the highlighted pupils so each required pair stays in the same class.'
-          : 'All required pairs are together.',
-      count: insights.mustBeWithViolations.length.toString(),
-    },
-    {
-      title: 'Friend matches',
-      tone: 'border-sky-200 bg-sky-50 text-sky-900',
-      message: statistics
-        ? `${Math.round(statistics.avgSatisfaction)}% average friend match score across the current layout.`
-        : 'Friend match information will appear here once groups exist.',
-      count: statistics ? `${statistics.satisfactionDistribution.strong} strong` : '-',
-    },
-  ];
-
   const handleDragStart = (e: React.DragEvent, student: Student) => {
     setDraggedStudent(student);
     e.dataTransfer.effectAllowed = 'move';
@@ -446,80 +402,98 @@ export function ResultsView() {
   };
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-sky-700">Step 4</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Review groups</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Check the highlighted issues first, then make any final adjustments. Drag pupils between classes to move them.
-            </p>
+    <div className="space-y-4">
+      {/* Compact header */}
+      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Step 4</p>
+            <h2 className="mt-0.5 text-xl font-semibold tracking-tight text-slate-900">Review groups</h2>
           </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Current status</p>
-            <p className="mt-2 text-lg font-semibold text-slate-900">{reviewStatus}</p>
-            <p className="mt-1 text-sm text-slate-600">
-              {reviewStatus === 'Ready to export'
-                ? 'The current layout has no urgent conflicts.'
-                : 'A few issues still need checking before export.'}
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${
+              reviewStatus === 'Ready to export'
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-amber-100 text-amber-700'
+            }`}>
+              {reviewStatus}
+            </span>
+            <button
+              type="button"
+              onClick={() => exportToCSV(students, classes, getStudentById)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => exportToPDF(students, classes, undefined, getStudentById)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Export PDF
+            </button>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {warningCards.map((card) => (
-            <div key={card.title} className={`rounded-2xl border p-4 ${card.tone}`}>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-75">{card.title}</p>
-              <p className="mt-3 text-2xl font-semibold">{card.count}</p>
-              <p className="mt-2 text-sm opacity-90">{card.message}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <h3 className="text-lg font-semibold text-slate-900">What to check now</h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Work down this list from top to bottom. The cards below each class will highlight pupils who may need moving.
-            </p>
-            <div className="mt-4 space-y-3">
-              {reviewChecks.map((check) => (
-                <div key={check} className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-sky-500" />
-                  <p className="text-sm text-slate-700">{check}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Finish up</h4>
-            <div className="mt-4 space-y-3">
-              <button
-                type="button"
-                onClick={() => exportToCSV(students, classes, getStudentById)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Export class lists as CSV
-              </button>
-              <button
-                type="button"
-                onClick={() => exportToPDF(students, classes, undefined, getStudentById)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Export printable PDF
-              </button>
-            </div>
-            <p className="mt-3 text-xs text-slate-500">
-              Export once you are happy with the groups. The detailed analysis below stays available if you need to double-check the numbers.
-            </p>
-          </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
+          <StatusChip ok={!currentSizeWarning} label="Class sizes" count={currentSizeWarning ? insights.sizeCompliance.maxDeviation : undefined} />
+          <StatusChip ok={insights.blacklistViolations.length === 0} label="Keep-apart" count={insights.blacklistViolations.length || undefined} />
+          <StatusChip ok={insights.mustBeWithViolations.length === 0} label="Must-stay" count={insights.mustBeWithViolations.length || undefined} />
+          {statistics && (
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-sky-700">
+              {Math.round(statistics.avgSatisfaction)}% friend match
+            </span>
+          )}
         </div>
       </section>
+
+      {/* Interaction hint — dismissible */}
+      {showHint && (
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5">
+          <svg className="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+          </svg>
+          <p className="flex-1 text-sm text-slate-600">
+            <span className="font-medium text-slate-800">Click</span> a pupil to highlight their connections across all classes
+            {' · '}
+            <span className="font-medium text-slate-800">Drag</span> a pupil to move them to a different class
+            {' · '}
+            <span className="font-medium text-slate-800">Hover</span> to see friend, must-stay, and keep-apart details
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowHint(false)}
+            className="shrink-0 rounded p-1 text-slate-400 hover:text-slate-600"
+            aria-label="Dismiss"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Focus mode active banner */}
+      {focusedStudentId && focusedStudent && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-slate-100 px-4 py-2.5">
+          <p className="text-sm text-slate-700">
+            Showing connections for <span className="font-semibold">{focusedStudent.name}</span>
+            {' — '}
+            <span className="text-violet-600">violet ↔ must-stay</span>
+            {' · '}
+            <span className="text-emerald-600">green = friend</span>
+            {' · '}
+            <span className="text-rose-600">red ⊘ keep-apart</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setFocusedStudentId(null)}
+            className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {lastSortingResult?.strictOverrideApplied && (
         <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -630,71 +604,99 @@ export function ResultsView() {
           </span>
         </button>
 
-        {showDetailedAnalysis && statistics && (
+        {showDetailedAnalysis && (
           <div className="mt-6 space-y-6 border-t border-slate-200 pt-6">
-            <div className="grid gap-4 md:grid-cols-4">
-              <DetailStat label="Average friend match" value={`${statistics.avgSatisfaction.toFixed(1)}%`} />
-              <DetailStat label="Strong matches" value={statistics.satisfactionDistribution.strong.toString()} />
-              <DetailStat label="Workable matches" value={statistics.satisfactionDistribution.workable.toString()} />
-              <DetailStat label="Need attention" value={statistics.satisfactionDistribution.attention.toString()} />
-            </div>
-
-            <div className="overflow-x-auto rounded-2xl border border-slate-200">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-500">Class</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-500">Actual</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-500">Target</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-500">Difference</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-500">EAL</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-500">EHCP</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-500">SEND</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-500">PPG</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-500">Friend match</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {statistics.classStats.map((cls) => (
-                    <tr key={cls.id}>
-                      <td className="px-4 py-3 font-medium text-slate-900">
-                        {cls.name}
-                        {cls.teacherName && <span className="ml-1 text-slate-400">({cls.teacherName})</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right text-slate-600">{cls.total}</td>
-                      <td className="px-4 py-3 text-right text-slate-600">{cls.target}</td>
-                      <td
-                        className={`px-4 py-3 text-right font-medium ${
-                          cls.deviation === 0
-                            ? 'text-emerald-600'
-                            : activeClassSizeMode === 'strict' || cls.deviation > 1
-                              ? 'text-rose-600'
-                              : 'text-amber-600'
-                        }`}
-                      >
-                        {cls.deviation}
-                      </td>
-                      <td className="px-4 py-3 text-right text-slate-600">{cls.eal}</td>
-                      <td className="px-4 py-3 text-right text-slate-600">{cls.ehcp}</td>
-                      <td className="px-4 py-3 text-right text-slate-600">{cls.send}</td>
-                      <td className="px-4 py-3 text-right text-slate-600">{cls.ppg}</td>
-                      <td className="px-4 py-3 text-right text-slate-600">{cls.avgSatisfaction.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {lastSortingResult && (
-              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                Last automatic run used {lastSortingResult.iterationsUsed.toLocaleString()} iterations in{' '}
-                <span className="capitalize">{lastSortingResult.classSizeMode}</span> mode.
+            <div>
+              <h4 className="mb-3 text-sm font-semibold text-slate-700">Current status checks</h4>
+              <div className="space-y-2">
+                {reviewChecks.map((check) => (
+                  <div key={check} className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-2.5">
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-sky-500" />
+                    <p className="text-sm text-slate-700">{check}</p>
+                  </div>
+                ))}
               </div>
+            </div>
+
+            {statistics && (
+              <>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <DetailStat label="Average friend match" value={`${statistics.avgSatisfaction.toFixed(1)}%`} />
+                  <DetailStat label="Strong matches" value={statistics.satisfactionDistribution.strong.toString()} />
+                  <DetailStat label="Workable matches" value={statistics.satisfactionDistribution.workable.toString()} />
+                  <DetailStat label="Need attention" value={statistics.satisfactionDistribution.attention.toString()} />
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-500">Class</th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-500">Actual</th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-500">Target</th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-500">Difference</th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-500">EAL</th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-500">EHCP</th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-500">SEND</th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-500">PPG</th>
+                        <th className="px-4 py-3 text-right font-semibold text-slate-500">Friend match</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {statistics.classStats.map((cls) => (
+                        <tr key={cls.id}>
+                          <td className="px-4 py-3 font-medium text-slate-900">
+                            {cls.name}
+                            {cls.teacherName && <span className="ml-1 text-slate-400">({cls.teacherName})</span>}
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600">{cls.total}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{cls.target}</td>
+                          <td
+                            className={`px-4 py-3 text-right font-medium ${
+                              cls.deviation === 0
+                                ? 'text-emerald-600'
+                                : activeClassSizeMode === 'strict' || cls.deviation > 1
+                                  ? 'text-rose-600'
+                                  : 'text-amber-600'
+                            }`}
+                          >
+                            {cls.deviation}
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600">{cls.eal}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{cls.ehcp}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{cls.send}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{cls.ppg}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{cls.avgSatisfaction.toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {lastSortingResult && (
+                  <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    Last automatic run used {lastSortingResult.iterationsUsed.toLocaleString()} iterations in{' '}
+                    <span className="capitalize">{lastSortingResult.classSizeMode}</span> mode.
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
       </section>
     </div>
+  );
+}
+
+function StatusChip({ ok, label, count }: { ok: boolean; label: string; count?: number }) {
+  return (
+    <span className={`rounded-full border px-2.5 py-1 ${
+      ok
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+        : 'border-rose-200 bg-rose-50 text-rose-700'
+    }`}>
+      {ok ? '✓' : '✕'} {label}{count !== undefined ? ` (${count})` : ''}
+    </span>
   );
 }
 
